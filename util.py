@@ -6,22 +6,21 @@ import numpy as np
 """The important functions"""
 
 def compress(npa):
-    """takes in a numpy array (length multiple 8), returns it compressed, as a numpy array"""
+    """takes in a numpy array (length multiple 8), returns it compressed, as a bitarray"""
     bita = bitarray.bitarray(npa.tolist())
     bytea = bytearray(bita)
     compressed = zlib.compress(str(bytea), 9)
     bitar = bitarray.bitarray()
     bitar.frombytes(compressed)
-    return np.array(bitar.tolist())
+    return bitar
 
 def decompress(npa):
-    """takes in a compressed numpy array (length multiple 8), returns numpy array"""
-    bita = bitarray.bitarray(npa.tolist())
-    bytea = bytearray(bita)
-    decompressed = zlib.decompress(str(bytea), 9)
+    """takes in a compressed bitarray (length multiple 8), returns bitarray"""
+    bytea = bytearray(npa)
+    decompressed = zlib.decompress(str(bytea))
     bitar = bitarray.bitarray()
     bitar.frombytes(decompressed)
-    return np.array(bitar.tolist())
+    return bitar
 
 def encorrect(npa):
     """takes in numpy array (length multiple 8), returns numpy array"""
