@@ -95,10 +95,14 @@ def compressandencode(name, lev = 4, wav = 'db3', thres = 500):
     for d in dec:
         dd = np.float32(d);
         dd[abs(d) < thres] = 0;
-        for i in range(np.shape(dd)[0]):
+
+        flattened = np.ndarray.flatten(dd);
+        for coeff in flattened:
+            uncompressed += binary(coeff);
+        """for i in range(np.shape(dd)[0]):
             for j in range(np.shape(dd)[1]):
-                uncompressed += binary(dd[i][j]);
-    
+                uncompressed += binary(dd[i][j]);"""
+
     drows, dcols = np.shape(dec[0])
     uncompressed = binary(drows) + binary(dcols) + uncompressed;
 
