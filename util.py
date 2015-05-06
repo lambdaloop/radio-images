@@ -10,7 +10,9 @@ def compress(npa):
     bita = bitarray.bitarray(npa.tolist())
     bytea = bytearray(bita)
     compressed = zlib.compress(str(bytea), 9)
-    return len(compressed)
+    bitar = bitarray.bitarray()
+    bitar.frombytes(compressed)
+    return len(bitar)
 
 def compress_encorrect(npa):
     """takes in a numpy array (length is multiple of 8),
