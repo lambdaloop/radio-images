@@ -46,7 +46,7 @@ def bitarraytostring(bitarray):
     #         fixed = fixed.replace('b', '');
     #     output += fixed;
     # return output
-    return bitarray.unpack(zero=b'0', one=b'1')
+    return bitarray.to01()
 
 def compressandencode(name, lev = 4, wav = 'db3', thres = 500):
 	"""Outputs Bitarray"""
@@ -149,7 +149,7 @@ def decompressanddecode(compressed):
     dcols = int(bitstofloat(bitarraytostring(uncompressed[32*1:32*1+32])));
     uncompressed = uncompressed[32*2:];
     
-    numCoeff = len(uncompressed) / 32 / 256
+    #numCoeff = len(uncompressed) / 32 / 256
     lev = 4
     wav = 'db3'
     wp2 = pywt.WaveletPacket2D(data=None, wavelet=wav, maxlevel=lev, mode='sym')
