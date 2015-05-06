@@ -34,18 +34,19 @@ def bitstofloat(bits):
     return a.float;
 
 def bitarraytostring(bitarray):
-    nums = np.array(bitarray);
-    output = '';
-    for num in nums:
-        fixed = bin(num);
-        if len(fixed) > 9:
-            fixed = fixed.replace('0b', '');
-        elif len(fixed) < 9:
-            fixed = fixed.replace('b', '0'*(9-len(fixed)));
-        else:
-            fixed = fixed.replace('b', '');
-        output += fixed;
-    return output
+    # nums = np.array(bitarray);
+    # output = '';
+    # for num in nums:
+    #     fixed = bin(num);
+    #     if len(fixed) > 9:
+    #         fixed = fixed.replace('0b', '');
+    #     elif len(fixed) < 9:
+    #         fixed = fixed.replace('b', '0'*(9-len(fixed)));
+    #     else:
+    #         fixed = fixed.replace('b', '');
+    #     output += fixed;
+    # return output
+    return bitarray.unpack(zero=b'0', one=b'1')
 
 def compressandencode(name, lev = 4, wav = 'db3', thres = 500):
 	"""Outputs Bitarray"""
