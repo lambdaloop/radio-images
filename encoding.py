@@ -58,23 +58,30 @@ def compressandencode(name, lev = 4, wav = 'db3', thres = 500):
     r = np.array(im.getdata(0)).reshape(height, width)
     g = np.array(im.getdata(1)).reshape(height, width)
     b = np.array(im.getdata(2)).reshape(height, width)
-    
+
     transform = np.matrix('.299, .587, .114; -.16874, -.33126, .5; .5, -.41869, -.08131')
-    Y = np.zeros(np.shape(r));
-    Cb = np.zeros(np.shape(r));
-    Cr = np.zeros(np.shape(r));
+    def apply_transform(rgb):
+        return np.array(np.dot(transform, rgb))[0]
+
+    mat = np.dstack((r,g,b))
+    ycbcr = np.apply_along_axis(apply_transform, 2, mat)
     
-    for i in range(np.shape(r)[0]):
-        for j in range(np.shape(r)[1]):
-            RGB = np.matrix('{0}; {1}; {2}'.format(r.item((i,j)), g.item((i,j)), b.item((i,j))));
-            YCbCr = transform * RGB;
-            Y[i,j] = YCbCr.item(0,0);
-            Cb[i,j] = YCbCr.item(1,0);       
-            Cr[i,j] = YCbCr.item(2,0);
+    # transform = np.matrix('.299, .587, .114; -.16874, -.33126, .5; .5, -.41869, -.08131')
+    # Y = np.zeros(np.shape(r));
+    # Cb = np.zeros(np.shape(r));
+    # Cr = np.zeros(np.shape(r));
+    
+    # for i in range(np.shape(r)[0]):
+    #     for j in range(np.shape(r)[1]):
+    #         RGB = np.matrix('{0}; {1}; {2}'.format(r.item((i,j)), g.item((i,j)), b.item((i,j))));
+    #         YCbCr = transform * RGB;
+    #         Y[i,j] = YCbCr.item(0,0);
+    #         Cb[i,j] = YCbCr.item(1,0);       
+    #         Cr[i,j] = YCbCr.item(2,0);
             
     print 'Finished transform to Y, Cb, Cr';
     
-    x = Y
+    x = ycbcr[:,:,0]
 
     wp = pywt.WaveletPacket2D(data=x, wavelet=wav, maxlevel=lev, mode='sym')
 
@@ -136,9 +143,11 @@ def decompressanddecode(compressed):
         coeff[i] = bitstofloat(bitarraytostring(uncompressed[32*i:32*i+32]))
 
     for pindex in range(len(paths)):
-        dd = np.zeros((drows, dcols));
-        for i in range(drows*dcols):
-            dd[int(np.floor(i/dcols))][i%drows] = coeff[drows*dcols*pindex + i];
-        wp2[paths[pindex]] = dd;
+        wp2[paths[pindex]] = np.reshape(coeff[drows*dcols*pindex:drows*dcols*(pindex+1)], (drows, dcols));
+    #for pindex in range(len(paths)):
+    #    dd = np.zeros((drows, dcols));
+    #    for i in range(drows*dcols):
+    #       dd[int(np.floor(i/dcols))][i%drows] = coeff[drows*dcols*pindex + i];
+    #    wp2[paths[pindex]] = dd;
 
     ims(wp2.reconstruct())
