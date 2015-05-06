@@ -6,13 +6,42 @@ import numpy as np
 """The important functions"""
 
 def compress(npa):
-    """takes in a numpy array, returns its compressed size"""
+    """takes in a numpy array (length multiple 8), returns it compressed, as a numpy array"""
     bita = bitarray.bitarray(npa.tolist())
     bytea = bytearray(bita)
     compressed = zlib.compress(str(bytea), 9)
     bitar = bitarray.bitarray()
     bitar.frombytes(compressed)
-    return len(bitar)
+    return np.array(bitar.tolist())
+
+def decompress(npa):
+    """takes in a compressed numpy array (length multiple 8), returns numpy array"""
+    bita = bitarray.bitarray(npa.tolist())
+    bytea = bytearray(bita)
+    decompressed = zlib.decompress(str(bytea), 9)
+    bitar = bitarray.bitarray()
+    bitar.frombytes(decompressed)
+    return np.array(bitar.tolist())
+
+def encorrect(npa):
+    """takes in numpy array (length multiple 8), returns numpy array"""
+    bita = bitarray.bitarray(npa.tolist())
+    bytea = bytearray(bita)
+    rs = reedsolo.RSCodec(4)
+    bitar = bitarray.bitarray()
+    bitar.frombytes(str(rs.encode(bytea)))
+    return np.array(bitar.tolist())
+
+def correct(npa):
+    """takes in encorrected numpy array (length multiple 8), returns numpy array"""
+    bita = bitarray.bitarray(npa.tolist())
+    bytea = bytearray(bita)
+    rs = reedsolo.RSCodec(4)
+    bitar = bitarray.bitarray()
+    bitar.frombytes(str(rs.decode(bytea)))
+    return np.array(bitar.tolist())
+
+    
 
 def compress_encorrect(npa):
     """takes in a numpy array (length is multiple of 8),
@@ -39,20 +68,6 @@ def correct_decompress(npa):
     return np.array(bitar.tolist())
 
 """Extra functions"""
-
-def encode_bits(bita):
-    """
-    Takes a bitarray as input and outputs a bitarray
-    Bitarray length must be multiple of 8 I think
-    Otherwise unspecified results
-    (Takes some multiple of 8 bits and pads it with 4*8 bits) (for 2 correctable bytes)
-    (I think this can be more efficient...I can implement our own bytes)
-    """
-    bytea = bytearray(bita)
-    rs = reedsolo.RSCodec(4)
-    bitar = bitarray.bitarray()
-    bitar.frombytes(str(rs.encode(bytea)))
-    return bitar
 
 def decode_bits(bita):
     """inverse"""
