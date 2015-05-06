@@ -108,6 +108,11 @@ def compressandencode(name, lev = 4, wav = 'db3', thres = 500):
     
     return compressed;
 
+def ycbcr_to_rgb(ycbcr):
+    """Takes in an ycbcr numpy array (700, 700, 3) and returns an rgb numpy array (700, 700, 3)"""
+    transform = np.matrix('.299, .587, .114; -.16874, -.33126, .5; .5, -.41869, -.08131')
+    inverse = transform.getI()
+
 def decompressanddecode(compressed):
 	"""Takes Bitarray"""
 
