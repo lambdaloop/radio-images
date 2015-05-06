@@ -37,7 +37,10 @@ def correct(npa):
     bytea = bytearray(bita)
     rs = reedsolo.RSCodec(4)
     bitar = bitarray.bitarray()
-    bitar.frombytes(str(rs.decode(bytea)))
+    try:
+        bitar.frombytes(str(rs.decode(bytea)))
+    except:
+        return npa[:-32]
     return np.array(bitar.tolist())
 
     
