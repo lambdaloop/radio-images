@@ -34,18 +34,19 @@ def bitstofloat(bits):
     return a.float;
 
 def bitarraytostring(bitarray):
-    nums = np.array(bitarray);
-    output = '';
-    for num in nums:
-        fixed = bin(num);
-        if len(fixed) > 9:
-            fixed = fixed.replace('0b', '');
-        elif len(fixed) < 9:
-            fixed = fixed.replace('b', '0'*(9-len(fixed)));
-        else:
-            fixed = fixed.replace('b', '');
-        output += fixed;
-    return output
+    # nums = np.array(bitarray);
+    # output = '';
+    # for num in nums:
+    #     fixed = bin(num);
+    #     if len(fixed) > 9:
+    #         fixed = fixed.replace('0b', '');
+    #     elif len(fixed) < 9:
+    #         fixed = fixed.replace('b', '0'*(9-len(fixed)));
+    #     else:
+    #         fixed = fixed.replace('b', '');
+    #     output += fixed;
+    # return output
+    return bitarray.to01()
 
 def compressandencode(name, lev = 4, wav = 'db3', thres = 500):
     """Outputs Bitarray"""
@@ -95,10 +96,14 @@ def compressandencode(name, lev = 4, wav = 'db3', thres = 500):
     for d in dec:
         dd = np.float32(d);
         dd[abs(d) < thres] = 0;
-        for i in range(np.shape(dd)[0]):
+
+        flattened = np.ndarray.flatten(dd);
+        for coeff in flattened:
+            uncompressed += binary(coeff);
+        """for i in range(np.shape(dd)[0]):
             for j in range(np.shape(dd)[1]):
-                uncompressed += binary(dd[i][j]);
-    
+                uncompressed += binary(dd[i][j]);"""
+
     drows, dcols = np.shape(dec[0])
     uncompressed = binary(drows) + binary(dcols) + uncompressed;
 
@@ -107,6 +112,17 @@ def compressandencode(name, lev = 4, wav = 'db3', thres = 500):
     print 'Compressed to {0} bits'.format(len(compressed));
     
     return compressed;
+
+def ycbcr_to_rgb(ycbcr):
+    """Takes in an ycbcr numpy array (700, 700, 3) and returns an rgb numpy array (700, 700, 3)"""
+    transform = np.matrix('.299, .587, .114; -.16874, -.33126, .5; .5, -.41869, -.08131')
+    inverse = transform.getI()
+
+    def apply_transform(ycbcr):
+        return np.array(np.dot(inverse, ycbcr))[0]
+
+    return np.apply_along_axis(apply_transform, 2, ycbcr)
+    
 
 def decompressanddecode(compressed):
     """Takes Bitarray"""
@@ -133,7 +149,7 @@ def decompressanddecode(compressed):
     dcols = int(bitstofloat(bitarraytostring(uncompressed[32*1:32*1+32])));
     uncompressed = uncompressed[32*2:];
     
-    numCoeff = len(uncompressed) / 32 / 256
+    #numCoeff = len(uncompressed) / 32 / 256
     lev = 4
     wav = 'db3'
     wp2 = pywt.WaveletPacket2D(data=None, wavelet=wav, maxlevel=lev, mode='sym')
@@ -143,9 +159,11 @@ def decompressanddecode(compressed):
         coeff[i] = bitstofloat(bitarraytostring(uncompressed[32*i:32*i+32]))
 
     for pindex in range(len(paths)):
-        dd = np.zeros((drows, dcols));
-        for i in range(drows*dcols):
-            dd[int(np.floor(i/dcols))][i%drows] = coeff[drows*dcols*pindex + i];
-        wp2[paths[pindex]] = dd;
+        wp2[paths[pindex]] = np.reshape(coeff[drows*dcols*pindex:drows*dcols*(pindex+1)], (drows, dcols));
+    #for pindex in range(len(paths)):
+    #    dd = np.zeros((drows, dcols));
+    #    for i in range(drows*dcols):
+    #       dd[int(np.floor(i/dcols))][i%drows] = coeff[drows*dcols*pindex + i];
+    #    wp2[paths[pindex]] = dd;
 
     ims(wp2.reconstruct())
