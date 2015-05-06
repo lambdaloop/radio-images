@@ -48,7 +48,7 @@ def bitarraytostring(bitarray):
     return output
 
 def compressandencode(name, lev = 4, wav = 'db3', thres = 500):
-	"""Outputs Bitarray"""
+    """Outputs Bitarray"""
 
     im = Image.open(name)
     width, height = im.size
@@ -109,7 +109,7 @@ def compressandencode(name, lev = 4, wav = 'db3', thres = 500):
     return compressed;
 
 def decompressanddecode(compressed):
-	"""Takes Bitarray"""
+    """Takes Bitarray"""
 
     paths = ['aaaa', 'aaah', 'aaav', 'aaad', 'aaha', 'aahh', 'aahv', 'aahd', 'aava', 'aavh', 'aavv', 'aavd', 'aada', 'aadh', 'aadv', 'aadd',
     'ahaa', 'ahah', 'ahad', 'ahha', 'ahhh', 'ahhv', 'ahhd', 'ahva', 'ahvh', 'ahvv', 'ahvd', 'ahda', 'ahdh', 'ahdv', 'ahdd', 'avaa', 'avah',
