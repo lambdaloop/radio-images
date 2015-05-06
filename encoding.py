@@ -148,9 +148,11 @@ def decompressanddecode(compressed):
         coeff[i] = bitstofloat(bitarraytostring(uncompressed[32*i:32*i+32]))
 
     for pindex in range(len(paths)):
-        dd = np.zeros((drows, dcols));
-        for i in range(drows*dcols):
-            dd[int(np.floor(i/dcols))][i%drows] = coeff[drows*dcols*pindex + i];
-        wp2[paths[pindex]] = dd;
+        wp2[paths[pindex]] = np.reshape(coeff[drows*dcols*pindex:drows*dcols*(pindex+1)], (drows, dcols));
+    #for pindex in range(len(paths)):
+    #    dd = np.zeros((drows, dcols));
+    #    for i in range(drows*dcols):
+    #       dd[int(np.floor(i/dcols))][i%drows] = coeff[drows*dcols*pindex + i];
+    #    wp2[paths[pindex]] = dd;
 
     ims(wp2.reconstruct())
