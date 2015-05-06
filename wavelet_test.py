@@ -31,6 +31,7 @@ def ims(x):
     plt.clf()
     plt.imshow(x, cmap='gray')
     plt.draw()
+    plt.show()
 
 plot_image(r, g, b)
 
@@ -52,7 +53,7 @@ wps = wp.get_level(lev)
 
 dec = map(lambda x: x.data, wps)
 paths = map(lambda x: x.path, wps)
-
+print np.shape(dec[0])
 
 data = np.vstack(dec)
 s = np.std(data)
@@ -60,7 +61,7 @@ s = np.std(data)
 wp2 = pywt.WaveletPacket2D(data=None, wavelet=wav, maxlevel=lev, mode='sym')
 
 
-thres = 100
+thres = 20
 
 res = 0
 
@@ -70,8 +71,10 @@ for p, d in zip(paths, dec):
     wp2[p] = dd
     res += np.sum(dd != 0)
 
-ims(wp2.reconstruct())
+
 
 
 print(res)
 print(float(data.size) / float(res))
+
+ims(wp2.reconstruct())
