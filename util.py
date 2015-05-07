@@ -6,7 +6,7 @@ import numpy as np
 """The important functions"""
 
 def compress(npa):
-    """takes in a numpy array (length multiple 8), returns it compressed, as a bitarray"""
+    """takes in a bitarray (length multiple 8), returns it compressed, as a bitarray"""
     bita = bitarray.bitarray(npa.tolist())
     bytea = bytearray(bita)
     compressed = zlib.compress(str(bytea), 9)

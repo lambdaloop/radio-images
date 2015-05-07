@@ -41,25 +41,16 @@ def mse(img1, img2):
 
 def mse_compr(y, wav='db3',lev=4):
     wp = pywt.WaveletPacket2D(data=x, wavelet=wav, maxlevel=lev, mode='sym')
-
     wps = wp.get_level(lev)
-
     dec = map(lambda x: x.data, wps)
     paths = map(lambda x: x.path, wps)
-
     data = np.vstack(dec)
     s = np.std(data)
-
     wp2 = pywt.WaveletPacket2D(data=None, wavelet=wav, maxlevel=lev, mode='sym')
-
-
     thres = np.sqrt(squared_mean(y))
-
-
     res = 0
 
     uncompressed = '';
-
     for p, d in zip(paths, dec):
         dd = np.copy(d)
         #if p.count("a") == 0:
@@ -72,13 +63,9 @@ def mse_compr(y, wav='db3',lev=4):
         flattened = np.ndarray.flatten(dd);
         for coeff in flattened:
             uncompressed += binary(coeff);
-
     # drows, dcols = np.shape(dec[0])
     # uncompressed = binary(drows) + binary(dcols) + uncompressed;
-
-    compressed = util.compress(np.array(uncompressed));
-
-
+    compressed = util.compress(bitarray.bitarray(uncompressed));
     ty = wp2.reconstruct()
 
     return mse(y, ty), len(compressed)
@@ -180,8 +167,8 @@ def compressandencode(name, lev = 4, wav = 'db3', thres = 500):
     preamble = encode_preamble(width, height, drows, dcols)
     uncompressed =  preamble + uncompressed;
 
-    once = util.compress(np.array(uncompressed));
-    twice = util.compress(np.array(once.tolist()));
+    once = util.compress(bitarray.bitarray(uncompressed));
+    twice = util.compress(once.tolist());
     compressed = bitarray.bitarray(binary(len(twice))) + twice
     
     print 'Compressed to {0} bits'.format(len(compressed));
@@ -252,4 +239,9 @@ def decompressanddecode(compressed):
     # ims(imm)
     return imm[0:height, 0:width]
 
-
+def encode_cartoon(rgb):
+    uncompressed = ''
+    bytea = bytearray(rgb.flatten())
+    bitar = bitarray.bitarray()
+    bitar.frombytes(str(bytea))
+    return util.compress(bitar)
