@@ -33,6 +33,57 @@ def bitstofloat(bits):
     a.bin = bits;
     return a.float;
 
+def squared_mean(img):
+    return np.mean(img*img)
+
+def mse(img1, img2):
+    return np.mean((img1-img2)**2)
+
+def mse_compr(y, wav='db3',lev=4):
+    wp = pywt.WaveletPacket2D(data=x, wavelet=wav, maxlevel=lev, mode='sym')
+
+    wps = wp.get_level(lev)
+
+    dec = map(lambda x: x.data, wps)
+    paths = map(lambda x: x.path, wps)
+
+    data = np.vstack(dec)
+    s = np.std(data)
+
+    wp2 = pywt.WaveletPacket2D(data=None, wavelet=wav, maxlevel=lev, mode='sym')
+
+
+    thres = np.sqrt(squared_mean(y))
+
+
+    res = 0
+
+    uncompressed = '';
+
+    for p, d in zip(paths, dec):
+        dd = np.copy(d)
+        #if p.count("a") == 0:
+        #    rms = np.sqrt(squared_mean(d))
+        #    dd[abs(d - rms) < thres] = rms
+        #    dd[abs(d + rms) < thres] = -rms
+        dd[abs(d) < thres] = 0
+        wp2[p] = dd
+        res += np.sum(dd != 0)
+        flattened = np.ndarray.flatten(dd);
+        for coeff in flattened:
+            uncompressed += binary(coeff);
+
+    # drows, dcols = np.shape(dec[0])
+    # uncompressed = binary(drows) + binary(dcols) + uncompressed;
+
+    compressed = util.compress(np.array(uncompressed));
+
+
+    ty = wp2.reconstruct()
+
+    return mse(y, ty), len(compressed)
+
+
 def bitarraytostring(bitarray):
     # nums = np.array(bitarray);
     # output = '';
@@ -49,7 +100,7 @@ def bitarraytostring(bitarray):
     return bitarray.to01()
 
 def compressandencode(name, lev = 4, wav = 'db3', thres = 500):
-	"""Outputs Bitarray"""
+    """Outputs Bitarray"""
 
     im = Image.open(name)
     width, height = im.size
@@ -125,7 +176,7 @@ def ycbcr_to_rgb(ycbcr):
     
 
 def decompressanddecode(compressed):
-	"""Takes Bitarray"""
+    """Takes Bitarray"""
 
     paths = ['aaaa', 'aaah', 'aaav', 'aaad', 'aaha', 'aahh', 'aahv', 'aahd', 'aava', 'aavh', 'aavv', 'aavd', 'aada', 'aadh', 'aadv', 'aadd',
     'ahaa', 'ahah', 'ahad', 'ahha', 'ahhh', 'ahhv', 'ahhd', 'ahva', 'ahvh', 'ahvv', 'ahvd', 'ahda', 'ahdh', 'ahdv', 'ahdd', 'avaa', 'avah',
