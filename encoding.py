@@ -240,8 +240,12 @@ def decompressanddecode(compressed):
     return imm[0:height, 0:width]
 
 def encode_cartoon(rgb):
-    uncompressed = ''
     bytea = bytearray(rgb.flatten())
     bitar = bitarray.bitarray()
     bitar.frombytes(str(bytea))
     return util.compress(bitar)
+
+def decode_cartoon(compressed, height, width):
+    uncompressed = util.decompress(compressed)
+    rgb = np.array(bytearray(uncompressed))
+    return rgb.reshape((height, width, 3))
