@@ -265,3 +265,36 @@ def decode_cartoon(compressed, height, width):
     uncompressed = util.decompress(compressed)
     rgb = np.array(bytearray(uncompressed))
     return rgb.reshape((height, width, 3))
+
+def downsample(matrix):
+    if np.shape(matrix)[0] % 2 != 0:
+        matrix = np.vstack((matrix, matrix[-1]));
+    if np.shape(matrix)[1] %2 != 0:
+        matrix = np.hstack((matrix, np.transpose(np.matrix(matrix[:,-1]))));
+    
+    output = np.zeros((int(np.shape(matrix)[0])/2, int(np.shape(matrix)[1])/2));
+    for i in range(int(np.shape(matrix)[0])/2):
+        for j in range(int(np.shape(matrix)[1])/2):
+            output[i,j] = (matrix[2*i,2*j] + matrix[2*i+1,2*j] + matrix[2*i,2*j+1] + matrix[2*i+1,2*j+1]) / 4.0;
+    return output
+
+def upsample(matrix):
+    output = np.zeros((np.shape(matrix)[0]*2, np.shape(matrix)[1]*2));
+    for i in range(int(np.shape(matrix)[0])):
+        for j in range(int(np.shape(matrix)[1])):
+            output[2*i, 2*j] = matrix[i,j];
+            output[2*i+1, 2*j] = matrix[i,j];
+            output[2*i, 2*j+1] = matrix[i,j];
+            output[2*i+1, 2*j+1] = matrix[i,j];
+    
+    return output;
+
+def Imdownsample(matrix):
+    im = Image.fromarray(matrix);
+    im = im.resize((np.shape(matrix)[0]/2, np.shape(matrix)[1]/2))
+    return np.array(im.getdata()).reshape(np.shape(matrix)[0]/2, np.shape(matrix)[1]/2)
+
+def Imupsample(matrix):
+    im = Image.fromarray(matrix);
+    im = im.resize((np.shape(matrix)[0]*2, np.shape(matrix)[1]*2))
+    return np.array(im.getdata()).reshape(np.shape(matrix)[0]*2, np.shape(matrix)[1]*2)
