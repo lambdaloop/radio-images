@@ -48,6 +48,27 @@ def bitarraytostring(bitarray):
     # return output
     return bitarray.to01()
 
+preamble_len = 32*4
+
+def encode_preamble(width, height, drows, dcols):
+    preamble = binary(width) + binary(height) + \
+               binary(drows) + binary(dcols)
+
+    return preamble
+
+def decode_preamble(uncompressed):
+    out = []
+    for i in range(4):
+        x = bitstofloat(bitarraytostring(uncompressed[(32*i):(32*(i+1))]))
+        out.append(x)
+
+    width = int(out[0])
+    height = int(out[1])
+    drows = int(out[2])
+    dcols = int(out[3])
+
+    return (width, height, drows, dcols), uncompressed[preamble_len:]
+        
 def compressandencode(name, lev = 4, wav = 'db3', thres = 500):
     """Outputs Bitarray"""
 
@@ -105,9 +126,12 @@ def compressandencode(name, lev = 4, wav = 'db3', thres = 500):
                 uncompressed += binary(dd[i][j]);"""
 
     drows, dcols = np.shape(dec[0])
-    uncompressed = binary(drows) + binary(dcols) + uncompressed;
+    preamble = encode_preamble(width, height, drows, dcols)
+    uncompressed =  preamble + uncompressed;
 
-    compressed = util.compress(np.array(uncompressed));
+    once = util.compress(np.array(uncompressed));
+    twice = util.compress(np.array(once.tolist()));
+    compressed = bitarray.bitarray(binary(len(twice))) + twice
     
     print 'Compressed to {0} bits'.format(len(compressed));
     
@@ -122,7 +146,8 @@ def ycbcr_to_rgb(ycbcr):
         return np.array(np.dot(inverse, ycbcr))[0]
 
     return np.apply_along_axis(apply_transform, 2, ycbcr)
-    
+
+
 
 def decompressanddecode(compressed):
     """Takes Bitarray"""
@@ -143,11 +168,17 @@ def decompressanddecode(compressed):
     'dhdh', 'dhdv', 'dhdd', 'dvaa', 'dvah', 'dvav', 'dvad', 'dvha', 'dvhh', 'dvhv', 'dvhd', 'dvva', 'dvvh', 'dvvv', 'dvvd', 'dvda', 'dvdh',
     'dvdv', 'dvdd', 'ddaa', 'ddah', 'ddav', 'ddad', 'ddha', 'ddhh', 'ddhv', 'ddhd', 'ddva', 'ddvh', 'ddvv', 'ddvd', 'ddda', 'dddh', 'dddv',
     'dddd']
-	
-    uncompressed = util.decompress(compressed);
-    drows = int(bitstofloat(bitarraytostring(uncompressed[32*0:32*0+32])));
-    dcols = int(bitstofloat(bitarraytostring(uncompressed[32*1:32*1+32])));
-    uncompressed = uncompressed[32*2:];
+
+
+    L = int(bitstofloat(bitarraytostring(compressed[0:32])));
+    compressed = compressed[32:(L+32)]
+
+    print('decompressing...')
+    uncompressed = util.decompress(util.decompress(compressed))
+
+    print('reconstructing...')
+    params, uncompressed = decode_preamble(uncompressed)
+    width, height, drows, dcols = params
     
     #numCoeff = len(uncompressed) / 32 / 256
     lev = 4
@@ -166,4 +197,8 @@ def decompressanddecode(compressed):
     #       dd[int(np.floor(i/dcols))][i%drows] = coeff[drows*dcols*pindex + i];
     #    wp2[paths[pindex]] = dd;
 
-    ims(wp2.reconstruct())
+    imm = wp2.reconstruct()
+    # ims(imm)
+    return imm[0:height, 0:width]
+
+
