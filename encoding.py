@@ -33,24 +33,87 @@ def bitstofloat(bits):
     a.bin = bits;
     return a.float;
 
-def bitarraytostring(bitarray):
-    nums = np.array(bitarray);
-    output = '';
-    for num in nums:
-        fixed = bin(num);
-        if len(fixed) > 9:
-            fixed = fixed.replace('0b', '');
-        elif len(fixed) < 9:
-            fixed = fixed.replace('b', '0'*(9-len(fixed)));
-        else:
-            fixed = fixed.replace('b', '');
-        output += fixed;
-    return output
+def squared_mean(img):
+    return np.mean(img*img)
 
+def mse(img1, img2):
+    return np.mean((img1-img2)**2)
+
+def mse_compr(y, wav='db3',lev=4):
+    wp = pywt.WaveletPacket2D(data=x, wavelet=wav, maxlevel=lev, mode='sym')
+    wps = wp.get_level(lev)
+    dec = map(lambda x: x.data, wps)
+    paths = map(lambda x: x.path, wps)
+    data = np.vstack(dec)
+    s = np.std(data)
+    wp2 = pywt.WaveletPacket2D(data=None, wavelet=wav, maxlevel=lev, mode='sym')
+    thres = np.sqrt(squared_mean(y))
+    res = 0
+
+    uncompressed = '';
+    for p, d in zip(paths, dec):
+        dd = np.copy(d)
+        #if p.count("a") == 0:
+        #    rms = np.sqrt(squared_mean(d))
+        #    dd[abs(d - rms) < thres] = rms
+        #    dd[abs(d + rms) < thres] = -rms
+        dd[abs(d) < thres] = 0
+        wp2[p] = dd
+        res += np.sum(dd != 0)
+        flattened = np.ndarray.flatten(dd);
+        for coeff in flattened:
+            uncompressed += binary(coeff);
+    # drows, dcols = np.shape(dec[0])
+    # uncompressed = binary(drows) + binary(dcols) + uncompressed;
+    compressed = util.compress(bitarray.bitarray(uncompressed));
+    ty = wp2.reconstruct()
+
+    return mse(y, ty), len(compressed)
+
+
+def bitarraytostring(bitarray):
+    # nums = np.array(bitarray);
+    # output = '';
+    # for num in nums:
+    #     fixed = bin(num);
+    #     if len(fixed) > 9:
+    #         fixed = fixed.replace('0b', '');
+    #     elif len(fixed) < 9:
+    #         fixed = fixed.replace('b', '0'*(9-len(fixed)));
+    #     else:
+    #         fixed = fixed.replace('b', '');
+    #     output += fixed;
+    # return output
+    return bitarray.to01()
+
+preamble_len = 32*4
+
+def encode_preamble(width, height, drows, dcols):
+    preamble = binary(width) + binary(height) + \
+               binary(drows) + binary(dcols)
+
+    return preamble
+
+def decode_preamble(uncompressed):
+    out = []
+    for i in range(4):
+        x = bitstofloat(bitarraytostring(uncompressed[(32*i):(32*(i+1))]))
+        out.append(x)
+
+    width = int(out[0])
+    height = int(out[1])
+    drows = int(out[2])
+    dcols = int(out[3])
+
+    return (width, height, drows, dcols), uncompressed[preamble_len:]
+        
 def compressandencode(name, lev = 4, wav = 'db3', thres = 500):
     """Outputs Bitarray"""
+<<<<<<< HEAD
     im = Image.open(name);
     width, height = im.size;
+=======
+>>>>>>> 7b82da4323541701c1f12dada13f4f3a1470b8cd
 
     print 'Found image with width {0} and height {1}'.format(width, height);
 
@@ -103,10 +166,18 @@ def compressandencode(name, lev = 4, wav = 'db3', thres = 500):
                 uncompressed += binary(dd[i][j]);"""
 
     drows, dcols = np.shape(dec[0])
-    uncompressed = binary(drows) + binary(dcols) + uncompressed;
+    preamble = encode_preamble(width, height, drows, dcols)
+    uncompressed =  preamble + uncompressed;
 
+<<<<<<< HEAD
     compressed = util.compress(np.array(uncompressed));
 
+=======
+    once = util.compress(bitarray.bitarray(uncompressed));
+    twice = util.compress(once.tolist());
+    compressed = bitarray.bitarray(binary(len(twice))) + twice
+    
+>>>>>>> 7b82da4323541701c1f12dada13f4f3a1470b8cd
     print 'Compressed to {0} bits'.format(len(compressed));
 
     return compressed;
@@ -120,7 +191,8 @@ def ycbcr_to_rgb(ycbcr):
         return np.array(np.dot(inverse, ycbcr))[0]
 
     return np.apply_along_axis(apply_transform, 2, ycbcr)
-    
+
+
 
 def decompressanddecode(compressed):
     """Takes Bitarray"""
@@ -142,12 +214,27 @@ def decompressanddecode(compressed):
     'dvdv', 'dvdd', 'ddaa', 'ddah', 'ddav', 'ddad', 'ddha', 'ddhh', 'ddhv', 'ddhd', 'ddva', 'ddvh', 'ddvv', 'ddvd', 'ddda', 'dddh', 'dddv',
     'dddd']
 
+<<<<<<< HEAD
     uncompressed = util.decompress(compressed);
     drows = int(bitstofloat(bitarraytostring(uncompressed[32*0:32*0+32])));
     dcols = int(bitstofloat(bitarraytostring(uncompressed[32*1:32*1+32])));
     uncompressed = uncompressed[32*2:];
 
     numCoeff = len(uncompressed) / 32 / 256
+=======
+
+    L = int(bitstofloat(bitarraytostring(compressed[0:32])));
+    compressed = compressed[32:(L+32)]
+
+    print('decompressing...')
+    uncompressed = util.decompress(util.decompress(compressed))
+
+    print('reconstructing...')
+    params, uncompressed = decode_preamble(uncompressed)
+    width, height, drows, dcols = params
+    
+    #numCoeff = len(uncompressed) / 32 / 256
+>>>>>>> 7b82da4323541701c1f12dada13f4f3a1470b8cd
     lev = 4
     wav = 'db3'
     wp2 = pywt.WaveletPacket2D(data=None, wavelet=wav, maxlevel=lev, mode='sym')
@@ -164,4 +251,17 @@ def decompressanddecode(compressed):
     #       dd[int(np.floor(i/dcols))][i%drows] = coeff[drows*dcols*pindex + i];
     #    wp2[paths[pindex]] = dd;
 
-    ims(wp2.reconstruct())
+    imm = wp2.reconstruct()
+    # ims(imm)
+    return imm[0:height, 0:width]
+
+def encode_cartoon(rgb):
+    bytea = bytearray(rgb.flatten())
+    bitar = bitarray.bitarray()
+    bitar.frombytes(str(bytea))
+    return util.compress(bitar)
+
+def decode_cartoon(compressed, height, width):
+    uncompressed = util.decompress(compressed)
+    rgb = np.array(bytearray(uncompressed))
+    return rgb.reshape((height, width, 3))
