@@ -109,11 +109,9 @@ def decode_preamble(uncompressed):
         
 def compressandencode(name, lev = 4, wav = 'db3', thres = 500):
     """Outputs Bitarray"""
-<<<<<<< HEAD
+
     im = Image.open(name);
     width, height = im.size;
-=======
->>>>>>> 7b82da4323541701c1f12dada13f4f3a1470b8cd
 
     print 'Found image with width {0} and height {1}'.format(width, height);
 
@@ -169,15 +167,10 @@ def compressandencode(name, lev = 4, wav = 'db3', thres = 500):
     preamble = encode_preamble(width, height, drows, dcols)
     uncompressed =  preamble + uncompressed;
 
-<<<<<<< HEAD
-    compressed = util.compress(np.array(uncompressed));
-
-=======
     once = util.compress(bitarray.bitarray(uncompressed));
     twice = util.compress(once.tolist());
     compressed = bitarray.bitarray(binary(len(twice))) + twice
     
->>>>>>> 7b82da4323541701c1f12dada13f4f3a1470b8cd
     print 'Compressed to {0} bits'.format(len(compressed));
 
     return compressed;
@@ -214,15 +207,6 @@ def decompressanddecode(compressed):
     'dvdv', 'dvdd', 'ddaa', 'ddah', 'ddav', 'ddad', 'ddha', 'ddhh', 'ddhv', 'ddhd', 'ddva', 'ddvh', 'ddvv', 'ddvd', 'ddda', 'dddh', 'dddv',
     'dddd']
 
-<<<<<<< HEAD
-    uncompressed = util.decompress(compressed);
-    drows = int(bitstofloat(bitarraytostring(uncompressed[32*0:32*0+32])));
-    dcols = int(bitstofloat(bitarraytostring(uncompressed[32*1:32*1+32])));
-    uncompressed = uncompressed[32*2:];
-
-    numCoeff = len(uncompressed) / 32 / 256
-=======
-
     L = int(bitstofloat(bitarraytostring(compressed[0:32])));
     compressed = compressed[32:(L+32)]
 
@@ -234,7 +218,6 @@ def decompressanddecode(compressed):
     width, height, drows, dcols = params
     
     #numCoeff = len(uncompressed) / 32 / 256
->>>>>>> 7b82da4323541701c1f12dada13f4f3a1470b8cd
     lev = 4
     wav = 'db3'
     wp2 = pywt.WaveletPacket2D(data=None, wavelet=wav, maxlevel=lev, mode='sym')
