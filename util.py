@@ -5,9 +5,9 @@ import numpy as np
 
 """The important functions"""
 
-def compress(npa):
+def compress(bita):
     """takes in a bitarray (length multiple 8), returns it compressed, as a bitarray"""
-    bita = bitarray.bitarray(npa.tolist())
+    # bita = bitarray.bitarray(npa.tolist())
     bytea = bytearray(bita)
     compressed = zlib.compress(str(bytea), 9)
     bitar = bitarray.bitarray()
@@ -16,7 +16,8 @@ def compress(npa):
 
 def decompress(npa):
     """takes in a compressed bitarray (length multiple 8), returns bitarray"""
-    bytea = bytearray(npa)
+    # bytea = bytearray(npa)
+    bytea = npa.tobytes()
     decompressed = zlib.decompress(str(bytea))
     bitar = bitarray.bitarray()
     bitar.frombytes(decompressed)

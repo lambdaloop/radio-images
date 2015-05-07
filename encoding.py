@@ -55,7 +55,11 @@ def binary_short_byte(num):
 def byte_to_short(byte):
     return struct.unpack('!h', byte)[0]
 
+def binary_int_byte(num):
+    return struct.pack('!i', num)
 
+def byte_to_int(byte):
+    return struct.unpack('!i', byte)[0]
 
 
 def squared_mean(img):
@@ -63,6 +67,11 @@ def squared_mean(img):
 
 def mse(img1, img2):
     return np.mean((img1-img2)**2)
+
+def psnr(im1, im2):
+    m = mse(im1, im2)
+    return 10.0 * np.log10((256**2) / float(m) )
+    
 
 def mse_compr(y, wav='db3',lev=4):
     wp = pywt.WaveletPacket2D(data=x, wavelet=wav, maxlevel=lev, mode='sym')
@@ -103,7 +112,7 @@ def bitarraytostring(bitarray):
 LEVEL = 5
 WAVELET = 'db3'
 
-def get_wavelets(data, wavelet=WAVELET, lev=LEVEL, thres=None):
+def get_wavelets(data, wavelet=WAVELET, lev=LEVEL, thres_scale=1):
 
     wp = pywt.WaveletPacket2D(data=data, wavelet=wavelet, maxlevel=lev, mode='sym')
 
@@ -113,14 +122,17 @@ def get_wavelets(data, wavelet=WAVELET, lev=LEVEL, thres=None):
     dec = list(map(lambda x: x.data, wps))
     paths = list(map(lambda x: x.path, wps))
 
-    if thres == None:
-        thres = np.sqrt(np.mean(np.square(data)))
+    # if thres == None:
+    thres = thres_scale * np.sqrt(np.mean(np.square(data)))
 
+    out_dec = []
+    
     for d in dec:
         dd = np.float32(d)
         dd[abs(dd) < thres] = 0
+        out_dec.append(dd)
 
-    return zip(paths, dec)
+    return zip(paths, out_dec)
         
 
 def encode_wavelets(waves):
@@ -138,14 +150,15 @@ def encode_wavelets(waves):
     bb = ''.join(out)
     bb = binary_short_byte(drows) + binary_short_byte(dcols) + bb
 
-    a = bitarray.bitarray(endian='big')
+    a = bitarray.bitarray('', endian='big')
     a.frombytes(bb)
     
     return a
 
 def decode_wavelets(uncompressed):
-    wp3 = pywt.WaveletPacket2D(data=np.zeros((100,100)), wavelet=wav, maxlevel=lev, mode='sym')
-    paths = map(lambda x: x.path, wp3.get_level(5))
+    wp3 = pywt.WaveletPacket2D(data=np.zeros((100,100)),
+                               wavelet=WAVELET, maxlevel=LEVEL, mode='sym')
+    paths = map(lambda x: x.path, wp3.get_level(LEVEL))
 
     drows = byte_to_short(uncompressed[:16].tobytes())
     dcols = byte_to_short(uncompressed[16:32].tobytes())
@@ -153,7 +166,8 @@ def decode_wavelets(uncompressed):
     
     uncompressed = uncompressed[32:]
     
-    wp2 = pywt.WaveletPacket2D(data=None, wavelet=wav, maxlevel=lev, mode='sym')
+    wp2 = pywt.WaveletPacket2D(data=None,
+                               wavelet=WAVELET, maxlevel=LEVEL, mode='sym')
 
     N = 16
     
@@ -179,13 +193,27 @@ def decode_wavelets(uncompressed):
 
     return wp2
 
+MAX_PIXELS = 1000000 #1M
+CARTOON_PIXELS = 80000 # 50k
+BIT_THRESHOLD = 150000 # 150k bits we can send
 
-        
-def compressandencode(name, lev = 4, wav = 'db3', thres = 500):
+def compressandencode(name):
     """Outputs Bitarray"""
 
     im = Image.open(name);
     width, height = im.size;
+
+    # rescale, keep track of rescale factor and send that
+    # check if cartoon, send if yes, encode whether cartoon
+
+    # otherwise:
+    # convert to Y, Cb, Cr
+    # use wavelets to encode each one
+    # combine all arrays together
+    
+    # compress twice, add length at beginning
+
+    # return!
 
     print 'Found image with width {0} and height {1}'.format(width, height);
 
@@ -193,44 +221,77 @@ def compressandencode(name, lev = 4, wav = 'db3', thres = 500):
     g = np.array(im.getdata(1)).reshape(height, width)
     b = np.array(im.getdata(2)).reshape(height, width)
 
-    transform = np.matrix('.299, .587, .114; -.16874, -.33126, .5; .5, -.41869, -.08131')
-    def apply_transform(rgb):
-        return np.array(np.dot(transform, rgb))[0]
-
     mat = np.dstack((r,g,b))
-    ycbcr = np.apply_along_axis(apply_transform, 2, mat)
- 
-    print 'Finished transform to Y, Cb, Cr';
 
-    x = ycbcr[:,:,0]
+    n_down = autodownsample(r, MAX_PIXELS)
 
-    wp = pywt.WaveletPacket2D(data=x, wavelet=wav, maxlevel=lev, mode='sym')
+    n_down_cartoon = autodownsample(r, CARTOON_PIXELS)
 
-    wps = wp.get_level(lev)
+    print 'Downsampling {0} times...'.format(n_down_cartoon)
 
-    dec = map(lambda x: x.data, wps)
+    dmat_cartoon = downsample_3d_n(mat, n_down_cartoon)
 
-    print 'Got coefficients';
-            
-    uncompressed = '';
-    for d in dec:
-        dd = np.float32(d);
-        dd[abs(d) < thres] = 0;
+    print 'Checking if cartoon...'
+    cartoon = encode_cartoon(dmat_cartoon)
 
-        flattened = np.ndarray.flatten(dd);
-        for coeff in flattened:
-            uncompressed += binary(coeff);
-        """for i in range(np.shape(dd)[0]):
-            for j in range(np.shape(dd)[1]):
-                uncompressed += binary(dd[i][j]);"""
+    print 'Size is {0} bits'.format(len(cartoon))
+    
+    if len(cartoon) < BIT_THRESHOLD:
+        print 'Detected cartoon!'
+        is_cartoon = 1
+        out = cartoon
+        n_down = n_down_cartoon
+    else:
+        print 'Not a cartoon, continuing...'
+        is_cartoon = 0
 
-    drows, dcols = np.shape(dec[0])
-    preamble = encode_preamble(width, height, drows, dcols)
-    uncompressed =  preamble + uncompressed;
+        print 'Downsampling {0} times...'.format(n_down)
+        dmat = downsample_3d_n(mat, n_down)
+        
+        ycbcr = rgb_to_ycbcr(dmat)
+    
+        print 'Finished transform to Y, Cb, Cr';
 
-    once = util.compress(bitarray.bitarray(uncompressed));
-    twice = util.compress(once.tolist());
-    compressed = bitarray.bitarray(binary(len(twice))) + twice
+        Y = ycbcr[:,:,0]
+        Cb = ycbcr[:,:,1]
+        Cr = ycbcr[:,:,2]
+
+        print 'Downsampling Cb and Cr...'
+        Cb = downsample_n(Cb, 2)
+        Cr = downsample_n(Cr, 2)
+
+        print 'Encoding Y...'
+        waves = get_wavelets(Y, thres_scale=1)
+        eY = encode_wavelets(waves)
+
+        print 'Encoding Cb...'
+        waves = get_wavelets(Cb, thres_scale=3)
+        eCb = encode_wavelets(waves)
+
+        print 'Encoding Cr...'
+        waves = get_wavelets(Cr, thres_scale=3)
+        eCr = encode_wavelets(waves)
+
+        pre = binary_int_byte(len(eY)) + binary_int_byte(len(eCb))
+
+        a = bitarray.bitarray('',endian='big')
+        a.frombytes(pre)
+
+        uncompressed = a + eY + eCb + eCr
+
+        print 'Compressing...'
+        once = util.compress(uncompressed);
+        twice = util.compress(once);
+        out = twice
+
+    preamble = binary_int_byte(len(out)) + binary_short_byte(n_down) + \
+               binary_short_byte(is_cartoon) + \
+               binary_int_byte(height) + binary_int_byte(width)
+    
+    a = bitarray.bitarray('',endian='big')
+    a.frombytes(preamble)
+
+    compressed = a + out
     
     print 'Compressed to {0} bits'.format(len(compressed));
 
@@ -246,73 +307,89 @@ def ycbcr_to_rgb(ycbcr):
 
     return np.apply_along_axis(apply_transform, 2, ycbcr)
 
+def rgb_to_ycbcr(rgb):
+    """Takes in an ycbcr numpy array (700, 700, 3) and returns an rgb numpy array (700, 700, 3)"""
+    transform = np.matrix('.299, .587, .114; -.16874, -.33126, .5; .5, -.41869, -.08131')
+
+    def apply_transform(x):
+        return np.array(np.dot(transform, x))[0]
+
+    return np.apply_along_axis(apply_transform, 2, rgb)
 
 
-def decompressanddecode(compressed):
+def decode_natural(compressed):
+    bits = util.decompress(util.decompress(compressed))
+
+    wave_len = byte_to_int(bits[:32].tobytes())
+    wave_small_len = byte_to_int(bits[32:64].tobytes())
+
+    data = bits[64:]
+
+    wp_Y = decode_wavelets(data[:wave_len])
+    wp_Cb = decode_wavelets(data[wave_len:(wave_len + wave_small_len)])
+    wp_Cr = decode_wavelets(
+        data[(wave_len + wave_small_len):(wave_len + 2*wave_small_len)])
+
+    Y = wp_Y.reconstruct()
+    Cb = wp_Cb.reconstruct()
+    Cr = wp_Cr.reconstruct()
+
+    Cb = upsample_n(Cb, 2)
+    Cr = upsample_n(Cr, 2)
+
+    h = min(Y.shape[0], Cb.shape[0])
+    w = min(Y.shape[1], Cb.shape[1])
+    
+    Y = Y[0:h, 0:w]
+    Cb = Cb[0:h, 0:w]
+    Cr = Cr[0:h, 0:w]
+    
+    ycbcr = np.dstack((Y, Cb, Cr))
+    rgb = ycbcr_to_rgb(ycbcr)
+
+    return rgb
+
+def decompressanddecode(bits):
     """Takes Bitarray"""
 
-    paths = ['aaaa', 'aaah', 'aaav', 'aaad', 'aaha', 'aahh', 'aahv', 'aahd', 'aava', 'aavh', 'aavv', 'aavd', 'aada', 'aadh', 'aadv', 'aadd',
-    'ahaa', 'ahah', 'ahad', 'ahha', 'ahhh', 'ahhv', 'ahhd', 'ahva', 'ahvh', 'ahvv', 'ahvd', 'ahda', 'ahdh', 'ahdv', 'ahdd', 'avaa', 'avah',
-    'avav', 'avad', 'avha', 'avhh', 'avhv', 'avhd', 'avva', 'avvh', 'avvv', 'avvd', 'avda', 'avdh', 'avdv', 'avdd', 'adaa', 'adah', 'adav',
-    'adad', 'adha', 'adhh', 'adhv', 'adhd', 'adva', 'advh', 'advv', 'advd', 'adda', 'addh', 'addv', 'addd', 'haaa', 'haah', 'haav', 'haad', 
-    'haha', 'hahh', 'hahv', 'hahd', 'hava', 'havh', 'havv', 'havd', 'hada', 'hadh', 'hadv', 'hadd', 'hhaa', 'hhah', 'hhav', 'hhad', 'hhha',
-    'hhhh', 'hhhv', 'hhhd', 'hhva', 'hhvh', 'hhvv', 'hhvd', 'hhda', 'hhdh', 'hhdv', 'hhdd', 'hvaa', 'hvah', 'hvav', 'hvad', 'hvha', 'hvhh',
-    'hvhv', 'hvhd', 'hvva', 'hvvh', 'hvvv', 'hvvd', 'hvda', 'hvdh', 'hvdv', 'hvdd', 'hdaa', 'hdah', 'hdav', 'hdad', 'hdha', 'hdhh', 'hdhv',
-    'hdhd', 'hdva', 'hdvh', 'hdvv', 'hdvd', 'hdda', 'hddh', 'hddv', 'hddd', 'vaaa', 'vaah', 'vaav', 'vaad', 'vaha', 'vahh', 'vahv', 'vahd',
-    'vava', 'vavh', 'vavv', 'vavd', 'vada', 'vadh', 'vadv', 'vadd', 'vhaa', 'vhah', 'vhav', 'vhad', 'vhha', 'vhhh', 'vhhv', 'vhhd', 'vhva',
-    'vhvh', 'vhvv', 'vhvd', 'vhda', 'vhdh', 'vhdv', 'vhdd', 'vvaa', 'vvah', 'vvav', 'vvad', 'vvha', 'vvhh', 'vvhv', 'vvhd', 'vvva', 'vvvh',
-    'vvvv', 'vvvd', 'vvda', 'vvdh', 'vvdv', 'vvdd', 'vdaa', 'vdah', 'vdav', 'vdad', 'vdha', 'vdhh', 'vdhv', 'vdhd', 'vdva', 'vdvh', 'vdvv',
-    'vdvd', 'vdda', 'vddh', 'vddv', 'vddd', 'daaa', 'daah', 'daav', 'daad', 'daha', 'dahh', 'dahv', 'dahd', 'dava', 'davh', 'davv', 'davd',
-    'dada', 'dadh', 'dadv', 'dadd', 'dhaa', 'dhah', 'dhav', 'dhad', 'dhha', 'dhhh', 'dhhv', 'dhhd', 'dhva', 'dhvh', 'dhvv', 'dhvd', 'dhda',
-    'dhdh', 'dhdv', 'dhdd', 'dvaa', 'dvah', 'dvav', 'dvad', 'dvha', 'dvhh', 'dvhv', 'dvhd', 'dvva', 'dvvh', 'dvvv', 'dvvd', 'dvda', 'dvdh',
-    'dvdv', 'dvdd', 'ddaa', 'ddah', 'ddav', 'ddad', 'ddha', 'ddhh', 'ddhv', 'ddhd', 'ddva', 'ddvh', 'ddvv', 'ddvd', 'ddda', 'dddh', 'dddv',
-    'dddd']
+    comp_len = byte_to_int(bits[:32].tobytes())
+    n_down = byte_to_short(bits[32:48].tobytes())
+    is_cartoon = byte_to_short(bits[48:64].tobytes())
+    height = byte_to_int(bits[64:96].tobytes())
+    width = byte_to_int(bits[96:128].tobytes())
 
-    L = int(bitstofloat(bitarraytostring(compressed[0:32])));
-    compressed = compressed[32:(L+32)]
+    compressed = bits[128:(comp_len+128)]
+    if is_cartoon:
+        print 'Detected cartoon!'
+        print 'Decompressing...'
+        rgb = decode_cartoon(compressed)
+    else:
+        rgb = decode_natural(compressed)
 
-    print('decompressing...')
-    uncompressed = util.decompress(util.decompress(compressed))
+    urgb = upsample_3d_n(rgb, n_down)
 
-    print('reconstructing...')
-    params, uncompressed = decode_preamble(uncompressed)
-    width, height, drows, dcols = params
+    urgb = urgb[0:height, 0:width, :]
     
-    #numCoeff = len(uncompressed) / 32 / 256
-    lev = 4
-    wav = 'db3'
-    wp2 = pywt.WaveletPacket2D(data=None, wavelet=wav, maxlevel=lev, mode='sym')
-
-    coeff = np.zeros(len(uncompressed)/32)
-    for i in range(len(uncompressed) / 32):
-        coeff[i] = bitstofloat(bitarraytostring(uncompressed[32*i:32*i+32]))
-
-    for pindex in range(len(paths)):
-        wp2[paths[pindex]] = np.reshape(coeff[drows*dcols*pindex:drows*dcols*(pindex+1)], (drows, dcols));
-    #for pindex in range(len(paths)):
-    #    dd = np.zeros((drows, dcols));
-    #    for i in range(drows*dcols):
-    #       dd[int(np.floor(i/dcols))][i%drows] = coeff[drows*dcols*pindex + i];
-    #    wp2[paths[pindex]] = dd;
-
-    imm = wp2.reconstruct()
-    # ims(imm)
-    return imm[0:height, 0:width]
+    return urgb
 
 def encode_cartoon(rgb):
-    bytea = bytearray(rgb.flatten())
-    bitar = bitarray.bitarray()
+    height, width = rgb[:, :, 0].shape    
+    
+    bytea = bytearray(np.int8(rgb.flatten()))
+    bitar = bitarray.bitarray('')
 
-    bb = binary_short_byte(height) + binary_short_byte(width) + \
+    bb = binary_int_byte(height) + binary_int_byte(width) + \
          str(bytea)
     bitar.frombytes(bb)
+
     return util.compress(bitar)
 
 def decode_cartoon(compressed):
     uncompressed = util.decompress(compressed)
-    height = byte_to_short(uncompressed[:16].tobytes())
-    width = byte_to_short(uncompressed[16:32].tobytes())
-    rgb = np.array(bytearray(uncompressed[32:]))
+    height = byte_to_int(uncompressed[:32].tobytes())
+    width = byte_to_int(uncompressed[32:64].tobytes())
+    rgb = np.array(bytearray(uncompressed[64:]))
+    
     return rgb.reshape((height, width, 3))
 
 def downsample(matrix):
@@ -338,6 +415,54 @@ def upsample(matrix):
     
     return output;
 
+def downsample_n(matrix, n):
+    if n <= 0:
+        return matrix
+    
+    mat = matrix
+    for i in range(n):
+        mat = downsample(mat)
+    return mat
+
+def upsample_n(matrix, n):
+    if n <= 0:
+        return matrix
+
+    mat = matrix
+    for i in range(n):
+        mat = upsample(mat)
+    return mat
+
+
+def downsample_3d_n(matrix, n):
+    if n <= 0:
+        return matrix
+
+    out = []
+    
+    for d in range(3):
+        mat = matrix[:, :, d]
+        for i in range(n):
+            mat = downsample(mat)
+        out.append(mat)
+        
+    return np.dstack(out)
+
+def upsample_3d_n(matrix, n):
+    if n <= 0:
+        return matrix
+
+    out = []
+    
+    for d in range(3):
+        mat = matrix[:, :, d]
+        for i in range(n):
+            mat = upsample(mat)
+        out.append(mat)
+        
+    return np.dstack(out)
+
+
 def Imdownsample(matrix):
     im = Image.fromarray(matrix);
     im = im.resize((np.shape(matrix)[0]/2, np.shape(matrix)[1]/2))
@@ -350,7 +475,20 @@ def Imupsample(matrix):
 
 def autodownsample(matrix, max_pixels):
     """Returns the number of times to downsample the matrix so that it has fewer than max_pixels"""
-    n = int(np.ceil(np.log(np.shape(matrix)[0] * np.shape(matrix)[1] / max_pixels) / np.log(4)));
+    size = np.shape(matrix)[0] * np.shape(matrix)[1]
+    if size <= max_pixels:
+        return int(0)
+    
+    n = int(np.ceil(np.log(float(size) / max_pixels) / np.log(4.0)));
     return n;
 
 
+def load_image(name):
+    im = Image.open(name);
+    width, height = im.size;
+
+    r = np.array(im.getdata(0)).reshape(height, width)
+    g = np.array(im.getdata(1)).reshape(height, width)
+    b = np.array(im.getdata(2)).reshape(height, width)
+
+    return np.dstack([r, g, b])
