@@ -123,8 +123,8 @@ def compressandencode(name, lev = 4, wav = 'db3', thres = 500):
     def apply_transform(rgb):
         return np.array(np.dot(transform, rgb))[0]
 
-    mat = np.dstack((r,g,b))
-    ycbcr = np.apply_along_axis(apply_transform, 2, mat)
+    rgb = np.dstack((r,g,b))
+    ycbcr = np.apply_along_axis(apply_transform, 2, rgb)
 
     # transform = np.matrix('.299, .587, .114; -.16874, -.33126, .5; .5, -.41869, -.08131')
     # Y = np.zeros(np.shape(r));
