@@ -39,6 +39,9 @@ def squared_mean(img):
 def mse(img1, img2):
     return np.mean((img1-img2)**2)
 
+def psnr(img1, img2):
+    return mse(img1, img2)
+
 def mse_compr(y, wav='db3',lev=4):
     wp = pywt.WaveletPacket2D(data=x, wavelet=wav, maxlevel=lev, mode='sym')
     wps = wp.get_level(lev)
@@ -262,15 +265,16 @@ def downsample(matrix):
     return output
 
 def upsample(matrix):
-    output = np.zeros((np.shape(matrix)[0]*2, np.shape(matrix)[1]*2));
-    for i in range(int(np.shape(matrix)[0])):
-        for j in range(int(np.shape(matrix)[1])):
-            output[2*i, 2*j] = matrix[i,j];
-            output[2*i+1, 2*j] = matrix[i,j];
-            output[2*i, 2*j+1] = matrix[i,j];
-            output[2*i+1, 2*j+1] = matrix[i,j];
+    # output = np.zeros((np.shape(matrix)[0]*2, np.shape(matrix)[1]*2));
+    # for i in range(int(np.shape(matrix)[0])):
+    #     for j in range(int(np.shape(matrix)[1])):
+    #         output[2*i, 2*j] = matrix[i,j];
+    #         output[2*i+1, 2*j] = matrix[i,j];
+    #         output[2*i, 2*j+1] = matrix[i,j];
+    #         output[2*i+1, 2*j+1] = matrix[i,j];
     
-    return output;
+    # return output;
+    return matrix.repeat(2, axis=0).repeat(2, axis=1)
 
 def Imdownsample(matrix):
     im = Image.fromarray(matrix);
