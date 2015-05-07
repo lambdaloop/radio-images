@@ -221,6 +221,7 @@ def compressandencode(name):
     g = np.array(im.getdata(1)).reshape(height, width)
     b = np.array(im.getdata(2)).reshape(height, width)
 
+
     mat = np.dstack((r,g,b))
 
     n_down = autodownsample(r, MAX_PIXELS)
@@ -405,15 +406,16 @@ def downsample(matrix):
     return output
 
 def upsample(matrix):
-    output = np.zeros((np.shape(matrix)[0]*2, np.shape(matrix)[1]*2));
-    for i in range(int(np.shape(matrix)[0])):
-        for j in range(int(np.shape(matrix)[1])):
-            output[2*i, 2*j] = matrix[i,j];
-            output[2*i+1, 2*j] = matrix[i,j];
-            output[2*i, 2*j+1] = matrix[i,j];
-            output[2*i+1, 2*j+1] = matrix[i,j];
+    # output = np.zeros((np.shape(matrix)[0]*2, np.shape(matrix)[1]*2));
+    # for i in range(int(np.shape(matrix)[0])):
+    #     for j in range(int(np.shape(matrix)[1])):
+    #         output[2*i, 2*j] = matrix[i,j];
+    #         output[2*i+1, 2*j] = matrix[i,j];
+    #         output[2*i, 2*j+1] = matrix[i,j];
+    #         output[2*i+1, 2*j+1] = matrix[i,j];
     
-    return output;
+    # return output;
+    return matrix.repeat(2, axis=0).repeat(2, axis=1)
 
 def downsample_n(matrix, n):
     if n <= 0:

@@ -12,7 +12,7 @@ baud = float(fs)/Ns  # symbol rate
 f_low = 1102.5
 f_high = 2205
 
-Nbits_packet_noec = 2400
+Nbits_packet_noec = 1200
 wait_len = 160
 
 Nbits_packet = len(util.encorrect(np.zeros(Nbits_packet_noec)))
@@ -21,5 +21,5 @@ between_len = wait_len * 2
 
 msg_len = Ns * Nbits_packet
 
-pulse = genChirpPulse(3200, 500.0, 3500.0, 44100.0)
+pulse = genChirpPulse(1600, 500.0, 3000.0, 44100.0)
 pulse = pulse.real / 2.0
