@@ -281,3 +281,10 @@ def Imupsample(matrix):
     im = Image.fromarray(matrix);
     im = im.resize((np.shape(matrix)[0]*2, np.shape(matrix)[1]*2))
     return np.array(im.getdata()).reshape(np.shape(matrix)[0]*2, np.shape(matrix)[1]*2)
+
+def autodownsample(matrix, max_pixels):
+    """Returns the number of times to downsample the matrix so that it has fewer than max_pixels"""
+    n = int(np.ceil(np.log(np.shape(matrix)[0] * np.shape(matrix)[1] / max_pixels) / np.log(4)));
+    return n;
+
+
