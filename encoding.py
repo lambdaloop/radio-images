@@ -268,7 +268,7 @@ def compressandencode(name):
         Cr = downsample_n(Cr, 2)
 
         print 'Encoding Y...'
-        waves = get_wavelets(Y, thres_scale=0.9)
+        waves = get_wavelets(Y, thres_scale=0.8)
         eY = encode_wavelets(waves)
 
         print 'Encoding Cb...'
