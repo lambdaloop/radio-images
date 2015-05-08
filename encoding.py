@@ -208,7 +208,7 @@ def decode_wavelets(uncompressed):
     return wp2
 
 MAX_PIXELS = 1000000 #1M
-CARTOON_PIXELS = 25000 # 50k
+CARTOON_PIXELS = 20000 # 50k
 BIT_THRESHOLD = 150000 # 150k bits we can send
 
 def compressandencode(name):

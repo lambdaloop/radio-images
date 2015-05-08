@@ -25,5 +25,5 @@ between_len = wait_len * 4
 
 msg_len = Ns * Nbits_packet
 
-pulse = genChirpPulse(1600, 500.0, 3500.0, 44100.0)
+pulse = genChirpPulse(3200, 500.0, 3500.0, 44100.0)
 pulse = pulse.real / 2.0
