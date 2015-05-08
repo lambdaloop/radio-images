@@ -275,7 +275,7 @@ def compressandencode(name):
         Cr = inter_resample(Cr, 2)
 
         print 'Encoding Y...'
-        waves = get_wavelets(Y, thres_scale=0.8)
+        waves = get_wavelets(Y, thres_scale=1.0)
         eY = encode_wavelets(waves)
 
         print 'Encoding Cb...'
