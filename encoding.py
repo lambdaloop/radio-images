@@ -500,3 +500,22 @@ def load_image(name):
     b = np.array(im.getdata(2)).reshape(height, width)
 
     return np.dstack([r, g, b])
+
+
+def inter_resample(matrix, n):
+    """Matrix must be 2D. Returns a 2D matrix resampled depending on n.
+    If n>=1, it downsamples matrix by n times.  If n <= 1, it upsamples
+    matrix by 1/n times."""
+
+    cols = np.arange(0, np.shape(matrix)[1], 1)
+    rows = np.arange(0, np.shape(matrix)[0], 1)
+    
+    f = interpolate.interp2d(cols, rows, matrix)
+    
+    downrows = np.arange(0, np.shape(matrix)[0], n)
+    downcols = np.arange(0, np.shape(matrix)[1], n)
+
+    down = f(downcols, downrows)
+             
+    return down;
+    
