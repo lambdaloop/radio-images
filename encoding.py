@@ -7,6 +7,7 @@ import bitarray
 import struct
 import util
 from bitstring import BitArray
+from scipy import interpolate
 
 def plot_image(r, g, b, cmap='gray'):
     plt.clf()
@@ -66,6 +67,12 @@ def binary_int_byte(num):
 
 def byte_to_int(byte):
     return struct.unpack('!i', byte)[0]
+
+def binary_float_byte(num):
+    return struct.pack('!f', num)
+
+def byte_to_float(byte):
+    return struct.unpack('!f', byte)[0]
 
 
 def squared_mean(img):
@@ -230,13 +237,13 @@ def compressandencode(name):
 
     mat = np.dstack((r,g,b))
 
-    n_down = autodownsample(r, MAX_PIXELS)
+    n_down = inter_autodownsample(r, MAX_PIXELS)
 
-    n_down_cartoon = autodownsample(r, CARTOON_PIXELS)
+    n_down_cartoon = inter_autodownsample(r, CARTOON_PIXELS)
 
     print 'Downsampling {0} times...'.format(n_down_cartoon)
 
-    dmat_cartoon = downsample_3d_n(mat, n_down_cartoon)
+    dmat_cartoon = inter_resample_3d(mat, n_down_cartoon)
 
     print 'Checking if cartoon...'
     cartoon = encode_cartoon(dmat_cartoon)
@@ -253,7 +260,7 @@ def compressandencode(name):
         is_cartoon = 0
 
         print 'Downsampling {0} times...'.format(n_down)
-        dmat = downsample_3d_n(mat, n_down)
+        dmat = inter_resample_3d(mat, n_down)
         
         ycbcr = rgb_to_ycbcr(dmat)
     
@@ -264,8 +271,8 @@ def compressandencode(name):
         Cr = ycbcr[:,:,2]
 
         # print 'Downsampling Cb and Cr...'
-        Cb = downsample_n(Cb, 2)
-        Cr = downsample_n(Cr, 2)
+        Cb = inter_resample(Cb, 2)
+        Cr = inter_resample(Cr, 2)
 
         print 'Encoding Y...'
         waves = get_wavelets(Y, thres_scale=0.8)
@@ -291,7 +298,7 @@ def compressandencode(name):
         twice = util.compress(once);
         out = twice
 
-    preamble = binary_int_byte(len(out)) + binary_short_byte(n_down) + \
+    preamble = binary_int_byte(len(out)) + binary_float_byte(n_down) + \
                binary_short_byte(is_cartoon) + \
                binary_int_byte(height) + binary_int_byte(width)
     
@@ -341,8 +348,8 @@ def decode_natural(compressed):
     Cb = wp_Cb.reconstruct()
     Cr = wp_Cr.reconstruct()
 
-    Cb = upsample_n(Cb, 2)
-    Cr = upsample_n(Cr, 2)
+    Cb = inter_resample(Cb, 1/2.0)
+    Cr = inter_resample(Cr, 1/2.0)
 
     h = min(Y.shape[0], Cb.shape[0])
     w = min(Y.shape[1], Cb.shape[1])
@@ -360,12 +367,12 @@ def decompressanddecode(bits):
     """Takes Bitarray"""
 
     comp_len = byte_to_int(bits[:32].tobytes())
-    n_down = byte_to_short(bits[32:48].tobytes())
-    is_cartoon = byte_to_short(bits[48:64].tobytes())
-    height = byte_to_int(bits[64:96].tobytes())
-    width = byte_to_int(bits[96:128].tobytes())
+    n_down = byte_to_float(bits[32:64].tobytes())
+    is_cartoon = byte_to_short(bits[64:80].tobytes())
+    height = byte_to_int(bits[80:112].tobytes())
+    width = byte_to_int(bits[112:144].tobytes())
 
-    compressed = bits[128:(comp_len+128)]
+    compressed = bits[144:(comp_len+144)]
     if is_cartoon:
         print 'Detected cartoon!'
         print 'Decompressing...'
@@ -373,7 +380,10 @@ def decompressanddecode(bits):
     else:
         rgb = decode_natural(compressed)
 
-    urgb = upsample_3d_n(rgb, n_down)
+    if n_down == 0:
+        urgb = rgb
+    else:
+        urgb = inter_resample_3d(rgb, 1/float(n_down))
 
     urgb = urgb[0:height, 0:width, :]
     
@@ -518,6 +528,10 @@ def inter_resample(matrix, n):
     If n>=1, it downsamples matrix by n times.  If n <= 1, it upsamples
     matrix by 1/n times. MAKE SURE n IS A FLOAT!!!"""
 
+    if n == 0:
+        return matrix
+        
+    
     cols = np.arange(0, np.shape(matrix)[1], 1)
     rows = np.arange(0, np.shape(matrix)[0], 1)
     
@@ -530,3 +544,10 @@ def inter_resample(matrix, n):
              
     return down;
     
+def inter_resample_3d(mat, n):
+    out = []
+    for i in range(3):
+        x = inter_resample(mat[:, :, i], n)
+        out.append(x)
+
+    return np.dstack(out)
