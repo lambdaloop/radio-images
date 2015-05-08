@@ -23,7 +23,7 @@ from encoding import *
 from radio_params import *
 from radio_transmit import *
 
-name = '../final/Isee.tiff'
+name = '../final/calBlue.tiff'
 
 # im = load_image(name)
 # ims_rgb(im)
@@ -61,7 +61,7 @@ dout = 0
 if sys.platform == 'darwin':  # Mac
     s = serial.Serial(port='/dev/tty.SLAB_USBtoUART')
 else:                         #windows
-    s = serial.Serial(port='/dev/ttyUSB0') ##### CHANGE !!!!!!
+    s = serial.Serial(port='/dev/ttyUSB1') ##### CHANGE !!!!!!
 s.setDTR(0)
 
 zero_sample = np.zeros(int(44100 * 0.3))

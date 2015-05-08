@@ -11,7 +11,7 @@ import sys
 
 import threading,time
 import multiprocessing
-
+from PIL import Image
 from rtlsdr import RtlSdr, limit_time
 import bitarray
 
@@ -23,15 +23,15 @@ from encoding import *
 from radio_params import *
 from radio_transmit import *
 
-record_len = 75
+record_len = 20
 
 ## configure SDR
 sdr = RtlSdr()
 
-freq_offset = 93.2e3
+freq_offset = 83.2e3
 
 sample_rate = 240e3
-center_freq = 443.592e6 - freq_offset
+center_freq = 443.582e6 - freq_offset
 #center_freq = 145.442e6 #- freq_offset
 
 sdr.sample_rate = sample_rate  
@@ -63,6 +63,8 @@ ss = smart_demod(sdr_samples, sample_rate, freq_offset)
 print('finding packets...')
 packets = findPackets(ss)[0]
 
+print('found {0} packets'.format(len(packets)))
+
 print('error correcting packets...')
 decodes = map(lambda p: util.correct(decodePacket(p)), packets)
 
@@ -71,5 +73,7 @@ new_x_bits = bitarray.bitarray(new_x.tolist())
 
 print('decompressing...')
 imm2 = decompressanddecode(new_x_bits)
+
+Image.fromarray(imm2).save('received.tiff')
 
 ims_rgb(imm2)

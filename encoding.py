@@ -74,6 +74,12 @@ def binary_float_byte(num):
 def byte_to_float(byte):
     return struct.unpack('!f', byte)[0]
 
+def byte_to_uchar(byte):
+    return struct.unpack('!B', byte)[0]
+
+def binary_uchar_byte(num):
+    return struct.pack('!B', num)
+
 
 def squared_mean(img):
     return np.mean(img*img)
@@ -151,19 +157,30 @@ def get_wavelets(data, wavelet=WAVELET, lev=LEVEL, thres_scale=1, no_a=True):
 
 def encode_wavelets(waves):
     out = []
+    lows = []
+    highs = []
     
     for path, coefs in waves:
+        q, low, high = quantize(coefs, 255)
+                
+        lows.append(low)
+        highs.append(high)
         
         for i in range(coefs.shape[0]):
             for j in range(coefs.shape[1]):
-                b = binary_short_byte(np.round(np.clip(coefs[i,j], -2**15, 2**15)))
+                # b = binary_short_byte(np.round(np.clip(coefs[i,j], -2**15, 2**15)))
+                b = binary_uchar_byte(q[i,j])
                 out.append(b)
 
     drows, dcols = coefs.shape
+
+    blows = map(binary_float_byte, lows)
+    bhighs = map(binary_float_byte, highs)
     
     bb = ''.join(out)
+    bb = ''.join(blows) + ''.join(bhighs) + bb
     bb = binary_short_byte(drows) + binary_short_byte(dcols) + bb
-
+    
     a = bitarray.bitarray('', endian='big')
     a.frombytes(bb)
     
@@ -179,15 +196,28 @@ def decode_wavelets(uncompressed):
 
     
     uncompressed = uncompressed[32:]
+
+    lows = []
+    for i in range(len(paths)):
+        lows.append(byte_to_float(uncompressed[32*i:32*(i+1)]))
+
+    uncompressed = uncompressed[len(paths)*32:]
+
+    highs = []
+    for i in range(len(paths)):
+        highs.append(byte_to_float(uncompressed[32*i:32*(i+1)]))
+
+    uncompressed = uncompressed[len(paths)*32:]
+    
     
     wp2 = pywt.WaveletPacket2D(data=None,
                                wavelet=WAVELET, maxlevel=LEVEL, mode='sym')
 
-    N = 16
+    N = 8
     
     coeff = np.zeros(len(uncompressed)/N)
     for i in range(len(uncompressed) /N):
-        coeff[i] = byte_to_short(uncompressed[N*i:N*(i+1)].tobytes())
+        coeff[i] = byte_to_uchar(uncompressed[N*i:N*(i+1)].tobytes())
 
     d = np.zeros((drows, dcols))
     i, j = 0, 0
@@ -202,13 +232,13 @@ def decode_wavelets(uncompressed):
             i += 1
         if i >= drows:
             i, j = 0, 0
-            wp2[paths[pindex]] = np.copy(d)
+            wp2[paths[pindex]] = unquantize(np.copy(d), lows[pindex], highs[pindex])
             pindex += 1
 
     return wp2
 
 MAX_PIXELS = 1000000 #1M
-CARTOON_PIXELS = 20000 # 50k
+CARTOON_PIXELS = 50000 # 50k
 BIT_THRESHOLD = 150000 # 150k bits we can send
 
 def compressandencode(name):
@@ -271,49 +301,17 @@ def compressandencode(name):
         out = use_wav(ycbcr, False)
         print('size is {0}'.format(len(out)))
         
-        if len(out) > BIT_THRESHOLD-144:
+        if len(out) > BIT_THRESHOLD:
             out = use_wav(ycbcr, True)
             print('size is {0}'.format(len(out)))
             
-            while len(out) > BIT_THRESHOLD-144:
+            while len(out) > BIT_THRESHOLD:
                 n_down += len(out) / (BIT_THRESHOLD-144)
                 dmat = inter_resample_3d(mat, n_down)
+                ycbcr = rgb_to_ycbcr(dmat)
                 out = use_wav(ycbcr, True)
 
                 print('size is {0}'.format(len(out)))                
-
-
-        # Y = ycbcr[:,:,0]
-        # Cb = ycbcr[:,:,1]
-        # Cr = ycbcr[:,:,2]
-
-        # # print 'Downsampling Cb and Cr...'
-        # Cb = downsample_n(Cb, 2)
-        # Cr = downsample_n(Cr, 2)
-
-        # print 'Encoding Y...'
-        # waves = get_wavelets(Y, thres_scale=0.9)
-        # eY = encode_wavelets(waves)
-
-        # print 'Encoding Cb...'
-        # waves = get_wavelets(Cb, thres_scale=3)
-        # eCb = encode_wavelets(waves)
-
-        # print 'Encoding Cr...'
-        # waves = get_wavelets(Cr, thres_scale=3)
-        # eCr = encode_wavelets(waves)
-
-        # pre = binary_int_byte(len(eY)) + binary_int_byte(len(eCb))
-
-        # a = bitarray.bitarray('',endian='big')
-        # a.frombytes(pre)
-
-        # uncompressed = a + eY + eCb + eCr
-
-        # print 'Compressing...'
-        # once = util.compress(uncompressed);
-        # twice = util.compress(once);
-        # out = twice
 
     preamble = binary_int_byte(len(out)) + binary_float_byte(n_down) + \
                binary_short_byte(is_cartoon) + \
@@ -365,8 +363,8 @@ def decode_natural(compressed):
     Cb = wp_Cb.reconstruct()
     Cr = wp_Cr.reconstruct()
 
-    Cb = inter_resample(Cb, 1/2.0)
-    Cr = inter_resample(Cr, 1/2.0)
+    Cb = inter_resample(Cb, 1/2.5)
+    Cr = inter_resample(Cr, 1/2.5)
 
     h = min(Y.shape[0], Cb.shape[0])
     w = min(Y.shape[1], Cb.shape[1])
@@ -413,11 +411,11 @@ def use_wav(ycbcr, a_option):
     Cr = ycbcr[:,:,2]
     
     # print 'Downsampling Cb and Cr...'
-    Cb = inter_resample(Cb, 2)
-    Cr = inter_resample(Cr, 2)
+    Cb = inter_resample(Cb, 2.5)
+    Cr = inter_resample(Cr, 2.5)
 
     print 'Encoding Y...'
-    waves = get_wavelets(Y, thres_scale=0.9, no_a=a_option)
+    waves = get_wavelets(Y, thres_scale=1.0, no_a=a_option)
     eY = encode_wavelets(waves)
 
     print 'Encoding Cb...'
@@ -441,15 +439,39 @@ def use_wav(ycbcr, a_option):
     return twice
 
 
+def quantize(arr, n):
+    low, high = np.min(arr), np.max(arr)
+
+    if low == high:
+        q = np.int32(arr * 0)
+    else:
+        arr_s = (arr - low) / (float(high) - low)
+        q = np.int32(np.round(arr_s * n))
+        
+    return q, low, high
+
+def unquantize(qarr, low, high):
+    n = np.max(qarr)
+
+    if n == 0:
+        return low + qarr
+    else:
+        arr_s = qarr / float(n)
+        return (arr_s * (high - low)) + low
+    
+
 def encode_cartoon(rgb):
     height, width = rgb[:, :, 0].shape    
 
-    trimmed = np.round((rgb.flatten() / 256.0) * 32.0 ) * 8
+    ycrcb = rgb_to_ycbcr(rgb)
+    
+    trimmed, low, high = quantize(ycrcb.flatten(), 32)
     
     bytea = bytearray(np.int8(trimmed))
     bitar = bitarray.bitarray('')
 
     bb = binary_int_byte(height) + binary_int_byte(width) + \
+         binary_float_byte(low) + binary_float_byte(high) + \
          str(bytea)
     bitar.frombytes(bb)
 
@@ -459,9 +481,14 @@ def decode_cartoon(compressed):
     uncompressed = util.decompress(compressed)
     height = byte_to_int(uncompressed[:32].tobytes())
     width = byte_to_int(uncompressed[32:64].tobytes())
+    low = byte_to_float(uncompressed[64:96].tobytes())
+    high = byte_to_float(uncompressed[96:128].tobytes())
 
-    rgb = np.array(bytearray(uncompressed[64:]))
-    rgb = rgb.reshape((height, width, 3))
+    ycrcb = np.array(bytearray(uncompressed[128:]))
+    ycrcb = unquantize(ycrcb, low, high)
+    ycrcb = ycrcb.reshape((height, width, 3))
+    
+    rgb = ycbcr_to_rgb(ycrcb)
     
     return rgb
 

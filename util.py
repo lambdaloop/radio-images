@@ -27,7 +27,7 @@ def encorrect(npa):
     """takes in numpy array (length multiple 8), returns numpy array"""
     bita = bitarray.bitarray(npa.tolist())
     bytea = bytearray(bita)
-    rs = reedsolo.RSCodec(6)
+    rs = reedsolo.RSCodec(10)
     bitar = bitarray.bitarray()
     bitar.frombytes(str(rs.encode(bytea)))
     return np.array(bitar.tolist())
@@ -36,7 +36,7 @@ def correct(npa):
     """takes in encorrected numpy array (length multiple 8), returns numpy array"""
     bita = bitarray.bitarray(npa.tolist())
     bytea = bytearray(bita)
-    rs = reedsolo.RSCodec(6)
+    rs = reedsolo.RSCodec(10)
     bitar = bitarray.bitarray()
     try:
         bitar.frombytes(str(rs.decode(bytea)))
