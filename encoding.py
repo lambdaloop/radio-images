@@ -259,37 +259,44 @@ def compressandencode(name):
     
         print 'Finished transform to Y, Cb, Cr';
 
-        Y = ycbcr[:,:,0]
-        Cb = ycbcr[:,:,1]
-        Cr = ycbcr[:,:,2]
+        out = use_wav(ycbcr, True)
 
-        # print 'Downsampling Cb and Cr...'
-        Cb = downsample_n(Cb, 2)
-        Cr = downsample_n(Cr, 2)
+        # if len(out) > BIT_THRESHOLD:
+        #     out = use_wav(ycbcr, False)
+        #     while len(out) > BIT_THRESHOLD:
+        #         n_down 
 
-        print 'Encoding Y...'
-        waves = get_wavelets(Y, thres_scale=0.9)
-        eY = encode_wavelets(waves)
+        # Y = ycbcr[:,:,0]
+        # Cb = ycbcr[:,:,1]
+        # Cr = ycbcr[:,:,2]
 
-        print 'Encoding Cb...'
-        waves = get_wavelets(Cb, thres_scale=3)
-        eCb = encode_wavelets(waves)
+        # # print 'Downsampling Cb and Cr...'
+        # Cb = downsample_n(Cb, 2)
+        # Cr = downsample_n(Cr, 2)
 
-        print 'Encoding Cr...'
-        waves = get_wavelets(Cr, thres_scale=3)
-        eCr = encode_wavelets(waves)
+        # print 'Encoding Y...'
+        # waves = get_wavelets(Y, thres_scale=0.9)
+        # eY = encode_wavelets(waves)
 
-        pre = binary_int_byte(len(eY)) + binary_int_byte(len(eCb))
+        # print 'Encoding Cb...'
+        # waves = get_wavelets(Cb, thres_scale=3)
+        # eCb = encode_wavelets(waves)
 
-        a = bitarray.bitarray('',endian='big')
-        a.frombytes(pre)
+        # print 'Encoding Cr...'
+        # waves = get_wavelets(Cr, thres_scale=3)
+        # eCr = encode_wavelets(waves)
 
-        uncompressed = a + eY + eCb + eCr
+        # pre = binary_int_byte(len(eY)) + binary_int_byte(len(eCb))
 
-        print 'Compressing...'
-        once = util.compress(uncompressed);
-        twice = util.compress(once);
-        out = twice
+        # a = bitarray.bitarray('',endian='big')
+        # a.frombytes(pre)
+
+        # uncompressed = a + eY + eCb + eCr
+
+        # print 'Compressing...'
+        # once = util.compress(uncompressed);
+        # twice = util.compress(once);
+        # out = twice
 
     preamble = binary_int_byte(len(out)) + binary_short_byte(n_down) + \
                binary_short_byte(is_cartoon) + \
@@ -378,6 +385,41 @@ def decompressanddecode(bits):
     urgb = urgb[0:height, 0:width, :]
     
     return urgb
+
+def use_wav(ycbcr, a_option):
+
+    Y = ycbcr[:,:,0]
+    Cb = ycbcr[:,:,1]
+    Cr = ycbcr[:,:,2]
+
+    # print 'Downsampling Cb and Cr...'
+    Cb = downsample_n(Cb, 2)
+    Cr = downsample_n(Cr, 2)
+
+    print 'Encoding Y...'
+    waves = get_wavelets(Y, thres_scale=0.9)
+    eY = encode_wavelets(waves)
+
+    print 'Encoding Cb...'
+    waves = get_wavelets(Cb, thres_scale=3)
+    eCb = encode_wavelets(waves)
+
+    print 'Encoding Cr...'
+    waves = get_wavelets(Cr, thres_scale=3)
+    eCr = encode_wavelets(waves)
+
+    pre = binary_int_byte(len(eY)) + binary_int_byte(len(eCb))
+
+    a = bitarray.bitarray('',endian='big')
+    a.frombytes(pre)
+
+    uncompressed = a + eY + eCb + eCr
+
+    print 'Compressing...'
+    once = util.compress(uncompressed);
+    twice = util.compress(once);
+    return twice
+
 
 def encode_cartoon(rgb):
     height, width = rgb[:, :, 0].shape    
