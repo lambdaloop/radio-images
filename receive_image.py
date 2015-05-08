@@ -23,15 +23,15 @@ from encoding import *
 from radio_params import *
 from radio_transmit import *
 
-record_len = 10
+record_len = 75
 
 ## configure SDR
 sdr = RtlSdr()
 
-freq_offset = 83.2e3
+freq_offset = 93.2e3
 
 sample_rate = 240e3
-center_freq = 443.582e6 - freq_offset
+center_freq = 443.592e6 - freq_offset
 #center_freq = 145.442e6 #- freq_offset
 
 sdr.sample_rate = sample_rate  
