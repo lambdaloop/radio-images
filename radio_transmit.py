@@ -9,22 +9,22 @@ def build_packet(bits):
     msg = afsk(1.0 * bits, f_low, f_high, baud, fs)
     return np.hstack([pulse, np.zeros(wait_len), msg])
 
-def findPackets(sig, fs_down=fs):
-    pulse_re = signal.resample(pulse, len(pulse) * float(fs_down) / float(fs))
-    corr = np.abs(crossCorr(sig, pulse_re))
+def findPackets(sig):
+    corr = np.abs(crossCorr(sig, pulse))
     thres = np.max(corr) / 2.0
     
     packets = []
     
-    wait_len_adj = wait_len * float(fs_down) / float(fs)
-    msg_len_adj = msg_len * float(fs_down) / float(fs)
+    # wait_len_adj = wait_len * float(fs_down) / float(fs)
+    # msg_len_adj = msg_len * float(fs_down) / float(fs)
     
-    packet_len_adj = len(pulse_re) + wait_len_adj + msg_len_adj 
+    # packet_len_adj = len(pulse_re) + wait_len_adj + msg_len_adj
+    packet_len = len(pulse) + wait_len + msg_len
     
     ps = []
     
-    for i in range(0, len(corr), int(packet_len_adj)):
-        c = corr[i:i+packet_len_adj]
+    for i in range(0, len(corr), int(packet_len)):
+        c = corr[i:i+packet_len]
         if sum(c > thres) > 0:
             ps.append(np.argmax(c) + i)
     
@@ -33,10 +33,10 @@ def findPackets(sig, fs_down=fs):
     last_flag = -1
     
     for p in ps:
-        start, end = int(p + wait_len_adj), int(p + msg_len_adj + wait_len_adj)
+        start, end = int(p + wait_len), int(p + msg_len + wait_len)
         
         if end >= len(sig):
-            last_flag = start - len(pulse_re) - wait_len_adj - 100
+            last_flag = start - len(pulse) - wait_len - 100
             break
         else:
             packets.append(sig[start:end])
@@ -88,8 +88,8 @@ def smart_demod(sdr_samples, sample_rate, freq_offset, chunk_len = 10240):
     y = sdr_samples
 
     # take care of noise when not sending data
-    # threshold = np.min(abs(y))*1.2
-    threshold = 0.025
+    threshold = np.min(abs(y))*1.2
+    # threshold = 0.025
 
     # if sum(abs(y) < threshold)/float(len(y)) < 0.5:
     y = y[abs(y) > threshold]

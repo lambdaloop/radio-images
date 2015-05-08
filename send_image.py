@@ -23,7 +23,7 @@ from encoding import *
 from radio_params import *
 from radio_transmit import *
 
-name = '../final/Marconi.tiff'
+name = '../final/calBlue.tiff'
 
 # im = load_image(name)
 # ims_rgb(im)

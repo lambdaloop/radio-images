@@ -23,7 +23,7 @@ from encoding import *
 from radio_params import *
 from radio_transmit import *
 
-record_len = 40
+record_len = 75
 
 ## configure SDR
 sdr = RtlSdr()
