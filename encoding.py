@@ -125,7 +125,7 @@ def bitarraytostring(bitarray):
 LEVEL = 5
 WAVELET = 'db3'
 
-def get_wavelets(data, wavelet=WAVELET, lev=LEVEL, thres_scale=1):
+def get_wavelets(data, wavelet=WAVELET, lev=LEVEL, thres_scale=1, no_a=True):
 
     wp = pywt.WaveletPacket2D(data=data, wavelet=wavelet, maxlevel=lev, mode='sym')
 
@@ -140,9 +140,10 @@ def get_wavelets(data, wavelet=WAVELET, lev=LEVEL, thres_scale=1):
 
     out_dec = []
     
-    for d in dec:
+    for d,p in zip(dec,paths):
         dd = np.float32(d)
-        dd[abs(dd) < thres] = 0
+        if p.count("a") < lev - 1 or no_a:
+            dd[abs(dd) < thres] = 0
         out_dec.append(dd)
 
     return zip(paths, out_dec)
@@ -250,7 +251,7 @@ def compressandencode(name):
 
     print 'Size is {0} bits'.format(len(cartoon))
     
-    if len(cartoon) < BIT_THRESHOLD:
+    if len(cartoon) < BIT_THRESHOLD-144:
         print 'Detected cartoon!'
         is_cartoon = 1
         out = cartoon
@@ -266,12 +267,14 @@ def compressandencode(name):
     
         print 'Finished transform to Y, Cb, Cr';
 
-        out = use_wav(ycbcr, True)
+        out = use_wav(ycbcr, False)
 
-        # if len(out) > BIT_THRESHOLD:
-        #     out = use_wav(ycbcr, False)
-        #     while len(out) > BIT_THRESHOLD:
-        #         n_down 
+        if len(out) > BIT_THRESHOLD-144:
+            out = use_wav(ycbcr, True)
+            while len(out) > BIT_THRESHOLD-144:
+                n_down += len(out) / (BIT_THRESHOLD-144)
+                dmat = inter_resample_3d(mat, n_down)
+                out = use_wav(ycbcr, True)
 
         # Y = ycbcr[:,:,0]
         # Cb = ycbcr[:,:,1]
@@ -407,7 +410,7 @@ def use_wav(ycbcr, a_option):
     Cr = inter_resample(Cr, 2)
 
     print 'Encoding Y...'
-    waves = get_wavelets(Y, thres_scale=0.8)
+    waves = get_wavelets(Y, thres_scale=0.8, no_a=a_option)
     eY = encode_wavelets(waves)
 
     print 'Encoding Cb...'
