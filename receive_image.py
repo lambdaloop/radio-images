@@ -36,7 +36,7 @@ center_freq = 443.592e6 - freq_offset
 
 sdr.sample_rate = sample_rate  
 sdr.center_freq = center_freq   
-sdr.gain = 10
+sdr.gain = 20
 
 ## get samples
 samples = []
