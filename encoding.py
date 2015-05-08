@@ -25,6 +25,12 @@ def ims(x):
     plt.draw()
     plt.show()
 
+def ims_rgb(x):
+    plt.clf()
+    plt.imshow(np.clip(x, 0, 255)/256.0, cmap='gray')
+    plt.draw()
+    plt.show()
+
 def binary(num):
     return ''.join(bin(ord(c)).replace('0b', '').rjust(8, '0') for c in struct.pack('!f', num))
 
@@ -194,7 +200,7 @@ def decode_wavelets(uncompressed):
     return wp2
 
 MAX_PIXELS = 1000000 #1M
-CARTOON_PIXELS = 80000 # 50k
+CARTOON_PIXELS = 60000 # 50k
 BIT_THRESHOLD = 150000 # 150k bits we can send
 
 def compressandencode(name):
@@ -257,12 +263,12 @@ def compressandencode(name):
         Cb = ycbcr[:,:,1]
         Cr = ycbcr[:,:,2]
 
-        print 'Downsampling Cb and Cr...'
+        # print 'Downsampling Cb and Cr...'
         Cb = downsample_n(Cb, 2)
         Cr = downsample_n(Cr, 2)
 
         print 'Encoding Y...'
-        waves = get_wavelets(Y, thres_scale=1)
+        waves = get_wavelets(Y, thres_scale=0.9)
         eY = encode_wavelets(waves)
 
         print 'Encoding Cb...'

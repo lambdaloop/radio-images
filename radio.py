@@ -261,7 +261,7 @@ def decode_bits2(NRZI, fs=44100.0, baud=1200):
     bits = []
     
     while i < len(NRZI):
-        bits.append(np.mean(NRZI[i-10:i+10]) > 0)
+        bits.append(np.mean(NRZI[i-8:i+8]) > 0)
         n += 1
         i = int(n*samples_bit + offset)
     

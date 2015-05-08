@@ -12,7 +12,7 @@ def build_packet(bits):
 def findPackets(sig, fs_down=fs):
     pulse_re = signal.resample(pulse, len(pulse) * float(fs_down) / float(fs))
     corr = np.abs(crossCorr(sig, pulse_re))
-    thres = np.median(corr) * 3
+    thres = np.max(corr) / 2.0
     
     packets = []
     
@@ -67,13 +67,13 @@ def demodulate(sdr_samples, sample_rate, ignore=0):
 
     sig = angle(y[1:] * conj(y[:-1]))
 
-    h = signal.firwin(256,4000.0,nyq=sample_rate/2.0)
+    h = signal.firwin(256,5000.0,nyq=sample_rate/2.0)
     sigf = signal.fftconvolve(sig, h)
     if ignore > 0:
         sigf = sigf[ignore:-ignore]
     
     
-    downsample = 30
+    downsample = 24
     sigfd = sigf[::downsample]
 
     fs_down = fs
@@ -88,16 +88,18 @@ def smart_demod(sdr_samples, sample_rate, freq_offset, chunk_len = 10240):
     y = sdr_samples
 
     # take care of noise when not sending data
-    threshold = np.min(abs(y))*1.2
-    if sum(abs(y) < threshold)/float(len(y)) < 0.3:
-        y = y[abs(y) > threshold]
+    # threshold = np.min(abs(y))*1.2
+    threshold = 0.025
+
+    # if sum(abs(y) < threshold)/float(len(y)) < 0.5:
+    y = y[abs(y) > threshold]
 
     sig = np.angle(y[1:] * np.conj(y[:-1]))
 
-    h = signal.firwin(256,4000.0,nyq=sample_rate/2.0)
+    h = signal.firwin(256,5000.0,nyq=sample_rate/2.0)
     sigf = signal.fftconvolve(sig, h)
 
-    downsample = 30
+    downsample = 24
     sigfd = sigf[::downsample]
 
     del sig
@@ -117,3 +119,16 @@ def smart_demod(sdr_samples, sample_rate, freq_offset, chunk_len = 10240):
     
     return np.hstack(out)
         
+
+
+
+
+
+
+
+
+
+
+
+
+
