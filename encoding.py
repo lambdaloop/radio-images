@@ -237,7 +237,7 @@ def decode_wavelets(uncompressed):
 
     return wp2
 
-MAX_PIXELS = 1000000 #1M
+MAX_PIXELS = 300000 #300k
 CARTOON_PIXELS = 50000 # 50k
 BIT_THRESHOLD = 150000 # 150k bits we can send
 
@@ -363,8 +363,8 @@ def decode_natural(compressed):
     Cb = wp_Cb.reconstruct()
     Cr = wp_Cr.reconstruct()
 
-    Cb = inter_resample(Cb, 1/2.5)
-    Cr = inter_resample(Cr, 1/2.5)
+    Cb = inter_resample(Cb, 1/2.0)
+    Cr = inter_resample(Cr, 1/2.0)
 
     h = min(Y.shape[0], Cb.shape[0])
     w = min(Y.shape[1], Cb.shape[1])
@@ -411,19 +411,19 @@ def use_wav(ycbcr, a_option):
     Cr = ycbcr[:,:,2]
     
     # print 'Downsampling Cb and Cr...'
-    Cb = inter_resample(Cb, 2.5)
-    Cr = inter_resample(Cr, 2.5)
+    Cb = inter_resample(Cb, 2)
+    Cr = inter_resample(Cr, 2)
 
     print 'Encoding Y...'
-    waves = get_wavelets(Y, thres_scale=1.0, no_a=a_option)
+    waves = get_wavelets(Y, thres_scale=0.65, no_a=a_option)
     eY = encode_wavelets(waves)
 
     print 'Encoding Cb...'
-    waves = get_wavelets(Cb, thres_scale=3)
+    waves = get_wavelets(Cb, thres_scale=4.0)
     eCb = encode_wavelets(waves)
 
     print 'Encoding Cr...'
-    waves = get_wavelets(Cr, thres_scale=3)
+    waves = get_wavelets(Cr, thres_scale=4.0)
     eCr = encode_wavelets(waves)
 
     pre = binary_int_byte(len(eY)) + binary_int_byte(len(eCb))
