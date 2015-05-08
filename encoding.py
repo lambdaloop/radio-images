@@ -208,7 +208,7 @@ def decode_wavelets(uncompressed):
     return wp2
 
 MAX_PIXELS = 1000000 #1M
-CARTOON_PIXELS = 60000 # 50k
+CARTOON_PIXELS = 25000 # 50k
 BIT_THRESHOLD = 150000 # 150k bits we can send
 
 def compressandencode(name):
@@ -247,6 +247,7 @@ def compressandencode(name):
     dmat_cartoon = inter_resample_3d(mat, n_down_cartoon)
 
     print 'Checking if cartoon...'
+
     cartoon = encode_cartoon(dmat_cartoon)
 
     print 'Size is {0} bits'.format(len(cartoon))
@@ -268,13 +269,19 @@ def compressandencode(name):
         print 'Finished transform to Y, Cb, Cr';
 
         out = use_wav(ycbcr, False)
-
+        print('size is {0}'.format(len(out)))
+        
         if len(out) > BIT_THRESHOLD-144:
             out = use_wav(ycbcr, True)
+            print('size is {0}'.format(len(out)))
+            
             while len(out) > BIT_THRESHOLD-144:
                 n_down += len(out) / (BIT_THRESHOLD-144)
                 dmat = inter_resample_3d(mat, n_down)
                 out = use_wav(ycbcr, True)
+
+                print('size is {0}'.format(len(out)))                
+
 
         # Y = ycbcr[:,:,0]
         # Cb = ycbcr[:,:,1]
@@ -404,13 +411,13 @@ def use_wav(ycbcr, a_option):
     Y = ycbcr[:,:,0]
     Cb = ycbcr[:,:,1]
     Cr = ycbcr[:,:,2]
-
+    
     # print 'Downsampling Cb and Cr...'
     Cb = inter_resample(Cb, 2)
     Cr = inter_resample(Cr, 2)
 
     print 'Encoding Y...'
-    waves = get_wavelets(Y, thres_scale=1.0, no_a=a_option)
+    waves = get_wavelets(Y, thres_scale=0.9, no_a=a_option)
     eY = encode_wavelets(waves)
 
     print 'Encoding Cb...'
@@ -436,8 +443,10 @@ def use_wav(ycbcr, a_option):
 
 def encode_cartoon(rgb):
     height, width = rgb[:, :, 0].shape    
+
+    trimmed = np.round((rgb.flatten() / 256.0) * 32.0 ) * 8
     
-    bytea = bytearray(np.int8(rgb.flatten()))
+    bytea = bytearray(np.int8(trimmed))
     bitar = bitarray.bitarray('')
 
     bb = binary_int_byte(height) + binary_int_byte(width) + \
@@ -450,9 +459,11 @@ def decode_cartoon(compressed):
     uncompressed = util.decompress(compressed)
     height = byte_to_int(uncompressed[:32].tobytes())
     width = byte_to_int(uncompressed[32:64].tobytes())
+
     rgb = np.array(bytearray(uncompressed[64:]))
+    rgb = rgb.reshape((height, width, 3))
     
-    return rgb.reshape((height, width, 3))
+    return rgb
 
 def downsample(matrix):
     if np.shape(matrix)[0] % 2 != 0:
