@@ -482,13 +482,24 @@ def Imupsample(matrix):
     return np.array(im.getdata()).reshape(np.shape(matrix)[0]*2, np.shape(matrix)[1]*2)
 
 def autodownsample(matrix, max_pixels):
-    """Returns the number of times to downsample the matrix so that it has fewer than max_pixels"""
+    """Returns the number of times to downsample the matrix so that it has fewer than max_pixels
+    in powers of 2."""
     size = np.shape(matrix)[0] * np.shape(matrix)[1]
     if size <= max_pixels:
         return int(0)
     
     n = int(np.ceil(np.log(float(size) / max_pixels) / np.log(4.0)));
     return n;
+
+def inter_autodownsample(matrix, max_pixels):
+    """Returns the number of times to downsample the matrix so that it has fewer than max_pixels
+    as a float.  Use with inter_resample."""
+    size = np.shape(matrix)[0] * np.shape(matrix)[1]
+    if size <= max_pixels:
+        return int(0)
+    
+    n = float(size) / max_pixels;
+    return np.sqrt(n);
 
 
 def load_image(name):
@@ -505,7 +516,7 @@ def load_image(name):
 def inter_resample(matrix, n):
     """Matrix must be 2D. Returns a 2D matrix resampled depending on n.
     If n>=1, it downsamples matrix by n times.  If n <= 1, it upsamples
-    matrix by 1/n times."""
+    matrix by 1/n times. MAKE SURE n IS A FLOAT!!!"""
 
     cols = np.arange(0, np.shape(matrix)[1], 1)
     rows = np.arange(0, np.shape(matrix)[0], 1)
